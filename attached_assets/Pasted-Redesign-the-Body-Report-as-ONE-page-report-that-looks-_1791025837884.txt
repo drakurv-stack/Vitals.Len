@@ -1,0 +1,46 @@
+Redesign the Body Report as ONE page (/report) that looks clean and professional. Do not dump every metric in one long scroll of text. Use progressive disclosure: show the summary first, hide the detail until the user taps. Do not touch existing features. Reuse my current stack, styling system and components.
+
+## Layout (single page, mobile-first, max ~2 screens tall)
+
+### 1. Hero summary (top, always visible)
+- Dark background (#0B0E14) with a subtle green-to-blue gradient glow, not a loud banner.
+- Small header: "Body Report", date/time, and a small "Measured via camera" chip.
+- Three circular ring gauges in a row: Stress, Energy, Health. Each shows the % in the center, the name below, and a small colored label pill (Low / Plenty / Resilient).
+- One short summary sentence under the rings, generated from the scores (e.g. "Your body is recovered and ready for a moderate workload.").
+
+### 2. Segmented tabs (sticky under the hero)
+Three tabs: **Overview | Metrics | Trends**. Switching tabs swaps the content below with a smooth fade. No page navigation.
+
+**Overview tab**
+- A 2-column grid of compact score tiles: Focus, HRV Score, Coherence, Stress, Energy, Health. Each tile has: name, big %, colored mini progress bar, label pill. Nothing else.
+- Tapping a tile opens a bottom sheet with a 2-sentence explanation, what the score means, and one actionable tip. Swipe down to close.
+
+**Metrics tab**
+- A clean list (not big cards): SDNN, Mean RR, RMSSD, pNN50, MxDMn, Moda, AMo50, CV.
+- Each row: metric name, value + unit, a small status dot/label, and a chevron. One line only.
+- Tapping a row expands it inline (accordion, one open at a time) to show the explanation and a small range bar showing where the value sits vs the normal range.
+- Footer note in small muted text: "Based on population averages, not personalized."
+
+**Trends tab**
+- "Nervous system balance" chart for the last 7 days (sympathetic = soft red, parasympathetic = soft blue) with a clean legend and today's values highlighted.
+- A small Coherence card below it with the score and a one-line explanation.
+- Empty state if there is no history yet: "Take a few measurements to see trends."
+
+### 3. Footer
+- Sticky bottom bar with a white "Continue" button (rounded, full width with side margins, safe-area padding).
+- Tiny muted disclaimer above the bar: "For wellness only. Not a medical device or diagnosis."
+
+## Visual design rules
+- Palette: background #0B0E14, surfaces #151922, borders rgba(255,255,255,0.06). Accent colors only for status: blue = low, green = good, yellow = average, red = high. Keep them slightly desaturated.
+- One font family, 3 sizes only (title, body, caption). Big numbers use tabular figures and semi-bold weight.
+- Consistent 16px spacing, 16–20px card radius, no heavy shadows, no borders competing with content.
+- Text is short: max 2 lines visible per item by default. All long explanations live in the bottom sheet or accordion.
+- Animate rings filling on load (600ms ease-out), tab fade, and accordion expand. Respect prefers-reduced-motion.
+- Skeleton loaders while the report computes. Handle low-signal and error states with a calm full-width banner and a "Measure again" button.
+- Accessible: 44px tap targets, sufficient contrast, aria labels on rings and tabs.
+
+## Data
+- Keep the existing metrics module, scoring config and POST /api/report, GET /api/report/history. This task is UI only unless a field is missing.
+- Explanations and tips must come from the scoring config so I can edit the text in one place.
+
+When done, show the files you changed and confirm the old flow still works.
