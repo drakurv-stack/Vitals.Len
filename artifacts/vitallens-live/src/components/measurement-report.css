@@ -108,6 +108,8 @@
 .vl-report-footer i { color: #c6c9bd; font-style: normal; }
 .vl-report-footer button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; border: 1px solid #ccd5c9; border-radius: 4px; color: #4d6b58; background: #f2f5ed; cursor: pointer; font-size: 10px; font-weight: 700; transition: color .18s, background .18s, transform .18s; }
 .vl-report-footer button:hover { color: #a45f49; background: #f8f2e9; transform: translateX(-2px); }
+.vl-report-footer button[data-testid="button-view-body-report"] { min-height: 44px; padding: 0 13px; border-radius: 7px; color: #f8faf6; background: #31594b; }
+.vl-report-footer button[data-testid="button-view-body-report"]:hover { color: #fff; background: #254638; }
 .vl-report button:focus-visible { outline: 2px solid #799880; outline-offset: 3px; }
 @media (max-width: 650px) {
   .vl-report { align-items: stretch; padding: 0; }
@@ -130,7 +132,9 @@
   .vl-report-metric-meta { font-size: 8px; }
   .vl-report-trend svg { height: 82px; }
   .vl-report-notice { margin: 17px 20px 19px; }
-  .vl-report-footer { min-height: 63px; padding: 0 18px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .vl-report-footer { min-height: auto; flex-wrap: wrap; gap: 8px; padding: 10px 18px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .vl-report-footer > span { flex: 1 1 100%; }
+  .vl-report-footer button { min-height: 44px; flex: 1 1 0; }
 }
 @media (max-width: 380px) {
   .vl-report-overview, .vl-report-measurements, .vl-report-quality, .vl-report-trend-section { padding-right: 15px; padding-left: 15px; }

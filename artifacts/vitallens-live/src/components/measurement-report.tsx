@@ -3,7 +3,7 @@ import { Activity, ArrowLeft, CalendarClock, Check, Clock3, Fingerprint, HeartPu
 import './measurement-report.css';
 
 export type MeasurementReportMetric = {
-  key: 'heartRate' | 'respiratoryRate' | 'hrvSdnn' | 'hrvRmssd' | 'hrvPnn50' | 'meanPulseInterval';
+  key: 'heartRate' | 'respiratoryRate' | 'hrvSdnn' | 'hrvRmssd' | 'hrvPnn50' | 'meanPulseInterval' | 'hrvModa' | 'hrvAmo50' | 'hrvMxDmn' | 'hrvCv' | 'hrvStressIndex';
   label: string;
   value: number | null;
   unit: string;
@@ -27,6 +27,7 @@ export type MeasurementReportData = {
 export type MeasurementReportProps = {
   report: MeasurementReportData;
   onClose: () => void;
+  onViewBodyReport?: () => void;
 };
 
 const metricExplanations: Record<MeasurementReportMetric['key'], string> = {
@@ -36,6 +37,11 @@ const metricExplanations: Record<MeasurementReportMetric['key'], string> = {
   hrvRmssd: 'RMSSD describes short-term changes between successive optical pulse-to-pulse intervals in this session.',
   hrvPnn50: 'pNN50 is the share of successive optical pulse intervals that differ by more than 50 ms.',
   meanPulseInterval: 'The average time between detected optical pulses during this session.',
+  hrvModa: 'Moda is the center of the most common 50 ms bin of quality-screened optical pulse intervals.',
+  hrvAmo50: 'AMo50 is the share of quality-screened optical pulse intervals in the most common 50 ms bin.',
+  hrvMxDmn: 'MxDMn is the range between the shortest and longest quality-screened optical pulse intervals.',
+  hrvCv: 'CV is the pulse-interval standard deviation expressed as a percentage of the mean interval.',
+  hrvStressIndex: 'An experimental histogram-derived index from optical pulse intervals; it is not a stress diagnosis.',
 };
 
 const metricIcons = {
@@ -45,6 +51,11 @@ const metricIcons = {
   hrvRmssd: Activity,
   hrvPnn50: Activity,
   meanPulseInterval: Activity,
+  hrvModa: Activity,
+  hrvAmo50: Activity,
+  hrvMxDmn: Activity,
+  hrvCv: Activity,
+  hrvStressIndex: Activity,
 };
 
 function formatDuration(seconds: number): string {
@@ -143,7 +154,7 @@ function MetricCard({ metric }: { metric: MeasurementReportMetric }) {
   );
 }
 
-export function MeasurementReport({ report, onClose }: MeasurementReportProps) {
+export function MeasurementReport({ report, onClose, onViewBodyReport }: MeasurementReportProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const sourceLabel = report.source === 'fingertip' ? 'Fingertip PPG' : 'VitalLens face camera';
   const availableMetrics = report.metrics.filter((metric) =>
@@ -279,6 +290,11 @@ export function MeasurementReport({ report, onClose }: MeasurementReportProps) {
 
         <footer className="vl-report-footer">
           <span><span className="vl-report-footer-mark">V</span> VitalLens Live <i>/</i> session record</span>
+          {onViewBodyReport && (
+            <button type="button" onClick={onViewBodyReport} data-testid="button-view-body-report">
+              View Body Report
+            </button>
+          )}
           <button type="button" onClick={onClose} data-testid="button-report-back"><ArrowLeft size={15} /> Back to camera</button>
         </footer>
       </section>

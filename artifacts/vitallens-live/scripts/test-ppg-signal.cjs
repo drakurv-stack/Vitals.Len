@@ -135,9 +135,18 @@ assert.ok(variability.rmssdMs !== null && variability.rmssdMs > 5);
 assert.ok(variability.pnn50Percent !== null);
 assert.ok(variability.meanPpiMs !== null);
 assert.ok(variability.validBeatCount >= 30);
+assert.ok(variability.modaMs !== null && variability.modaMs > 0);
+assert.ok(variability.amo50Percent !== null && variability.amo50Percent > 0);
+assert.ok(variability.mxDmnMs !== null && variability.mxDmnMs > 0);
+assert.ok(
+  variability.coefficientVariationPercent !== null &&
+    variability.coefficientVariationPercent >= 0,
+);
+assert.ok(variability.stressIndex !== null && variability.stressIndex > 0);
 console.log(
   `60-second PPG variability -> SDNN ${variability.sdnnMs.toFixed(1)} ms, RMSSD ${variability.rmssdMs.toFixed(1)} ms, pNN50 ${variability.pnn50Percent.toFixed(1)}%`,
 );
+console.log('Quality-gated PPG histogram metrics -> Moda, AMo50, MxDMn, CV and experimental index');
 
 const shortVariability = estimatePpgVariability(
   makeSamples({ durationSeconds: 35, bpmAt: () => 72, seed: 72 }),
@@ -190,6 +199,11 @@ const zeroVariabilityReport = createMeasurementReport({
     hrvRmssd: { value: 0, confidence: null, unit: 'ms' },
     hrvPnn50: { value: 0, confidence: null, unit: '%' },
     meanPulseInterval: { value: 833.3, confidence: null, unit: 'ms' },
+    hrvModa: { value: 825, confidence: null, unit: 'ms' },
+    hrvAmo50: { value: 33.3, confidence: null, unit: '%' },
+    hrvMxDmn: { value: 50, confidence: null, unit: 'ms' },
+    hrvCv: { value: 0.7, confidence: null, unit: '%' },
+    hrvStressIndex: { value: 0.4, confidence: null, unit: 'index' },
   }],
 });
 const reportMetrics = Object.fromEntries(
@@ -199,4 +213,9 @@ assert.equal(reportMetrics.hrvSdnn.value, 0, 'Measured zero SDNN must remain in 
 assert.equal(reportMetrics.hrvRmssd.value, 0, 'Measured zero RMSSD must remain in the report');
 assert.equal(reportMetrics.hrvPnn50.value, 0, 'Measured zero pNN50 must remain in the report');
 assert.equal(reportMetrics.meanPulseInterval.value, 833.3);
+assert.equal(reportMetrics.hrvModa.value, 825);
+assert.equal(reportMetrics.hrvAmo50.value, 33.3);
+assert.equal(reportMetrics.hrvMxDmn.value, 50);
+assert.equal(reportMetrics.hrvCv.value, 0.7);
+assert.equal(reportMetrics.hrvStressIndex.value, 0.4);
 console.log('Session report -> keeps measured zero variability values and pulse intervals');
