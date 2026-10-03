@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Activity, Aperture, ArrowUpRight, Check, ChevronRight, CircleAlert, CircleHelp, Clock3, Eye, EyeOff, HeartPulse, Info, LoaderCircle, LockKeyhole, Radio, RefreshCw, ShieldCheck, Square, Video, Wifi } from 'lucide-react';
+import { Activity, Aperture, ArrowUpRight, Check, ChevronRight, CircleAlert, CircleHelp, Clock3, Eye, EyeOff, Fingerprint, HeartPulse, Info, LoaderCircle, LockKeyhole, Radio, RefreshCw, ShieldCheck, Square, Video, Wifi } from 'lucide-react';
 import { useGetLiveDemoStatus, usePushLiveFrame, useStartLiveSession, useStopLiveSession } from '@workspace/api-client-react';
 import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -246,6 +246,12 @@ function AppHome() {
             <div className="wellness-note"><Info size={14} />For wellness exploration only. Not a medical device or diagnosis.</div>
           </div>
         </div>
+        <nav className="ppg-mode-switch home-mode-switch" aria-label="Camera modes">
+          <span className="ppg-mode-current" aria-current="page">Face camera <i>ACTIVE MODE</i></span>
+          <Link className="ppg-mode-link" href="/ppg" data-testid="link-mode-fingertip-ppg">
+            <Fingerprint size={15} /> Fingertip PPG
+          </Link>
+        </nav>
       </section>
 
       <section className="workbench enter-delay" aria-label="Live VitalLens demo">
