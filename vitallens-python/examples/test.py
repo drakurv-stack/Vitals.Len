@@ -140,7 +140,7 @@ def method_type(name):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('--api_key', type=str, default=None, help='Your API key (Optional if using proxy auth).')
+  parser.add_argument('--api_key', type=str, default=os.environ.get('VITALLENS_API_KEY'), help='Your API key (Optional if using proxy auth).')
   parser.add_argument('--vitals_path', type=str, default=None, help='Path to ground truth vitals')
   parser.add_argument('--video_path', type=str, default='examples/sample_video_1.mp4', help='Path to video')
   parser.add_argument('--method', type=method_type, default='vitallens', help='Choice of method')
