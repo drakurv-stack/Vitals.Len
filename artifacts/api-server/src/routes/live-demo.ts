@@ -202,7 +202,7 @@ function createWorker(id: string, root: string): LiveWorker {
     }
     rejectPending(worker, error);
   });
-  child.on("exit", () => {
+  child.on("close", () => {
     if (!worker.readySettled) {
       worker.readySettled = true;
       worker.rejectReady(new Error("The live inference worker stopped during startup."));
