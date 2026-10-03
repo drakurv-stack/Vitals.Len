@@ -106,6 +106,25 @@ export function FingertipPpgMode({
   const active = cameraActive || phase === 'starting' || phase === 'warming' || phase === 'live';
   const qualityPercent = signalQuality === null ? null : Math.round(Math.min(100, Math.max(0, signalQuality)));
   const qualityLabel = qualityPercent === null ? 'Waiting' : qualityPercent >= 75 ? 'Strong' : qualityPercent >= 45 ? 'Fair' : 'Low';
+  const lowGreenSignal = useMemo(() => {
+    const latestSample = samples[samples.length - 1];
+    if (!active || bpm !== null || !latestSample || samples.length < 20) return false;
+
+    const recentGreenValues = samples
+      .filter((sample) => latestSample.elapsedSeconds - sample.elapsedSeconds <= 3)
+      .map((sample) => sample.greenMean)
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right);
+    if (recentGreenValues.length < 20) return false;
+
+    const middle = Math.floor(recentGreenValues.length / 2);
+    const lower = recentGreenValues[middle - 1];
+    const upper = recentGreenValues[middle];
+    const medianGreenMean = recentGreenValues.length % 2 === 0 && lower !== undefined && upper !== undefined
+      ? (lower + upper) / 2
+      : upper;
+    return medianGreenMean !== undefined && medianGreenMean < 0.1;
+  }, [active, bpm, samples]);
   const variabilityReady = Boolean(
     variability &&
     variability.sdnnMs !== null &&
@@ -117,7 +136,7 @@ export function FingertipPpgMode({
   const torchLabel = {
     idle: 'Start a session to check support',
     checking: 'Checking torch support',
-    on: 'Torch available',
+    on: 'Torch on',
     unsupported: 'Torch not supported',
     unavailable: 'Torch unavailable',
   }[torchStatus];
@@ -198,7 +217,7 @@ export function FingertipPpgMode({
           <div className="ppg-quality">
             <div className="ppg-quality-head"><span>SIGNAL QUALITY</span><strong data-testid="metric-ppg-signal-quality">{qualityPercent === null ? '—' : `${qualityPercent}%`} <i>{qualityLabel}</i></strong></div>
             <div className="ppg-quality-track" role="meter" aria-label="Signal quality" aria-valuemin={0} aria-valuemax={100} aria-valuenow={qualityPercent ?? 0}><span style={{ width: `${qualityPercent ?? 0}%` }} /></div>
-            <p>{qualityPercent !== null && qualityPercent >= 75 ? 'Good contact. Keep your finger relaxed and still.' : 'Use light, steady pressure. Avoid pressing hard or shifting.'}</p>
+            <p>{lowGreenSignal ? 'Very little green light is reaching the camera. Reposition your fingertip over the camera lens and rear flash; use light pressure and keep it still.' : qualityPercent !== null && qualityPercent >= 75 ? 'Good contact. Keep your finger relaxed and still.' : 'Use light, steady pressure. Avoid pressing hard or shifting.'}</p>
           </div>
 
           <section className="ppg-variability" aria-label="Pulse interval variability" data-testid="ppg-variability">
