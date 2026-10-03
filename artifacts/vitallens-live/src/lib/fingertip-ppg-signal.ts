@@ -5,7 +5,7 @@ export interface PpgEstimate {
   quality: number | null;
 }
 
-const ANALYSIS_WINDOW_SECONDS = 10;
+const ANALYSIS_WINDOW_SECONDS = 8;
 const RESAMPLE_RATE = 12;
 const MIN_SIGNAL_SECONDS = 5.5;
 const MIN_BPM = 40;
@@ -71,7 +71,9 @@ export function estimatePpgHeartRate(samples: readonly PpgSample[]): PpgEstimate
   let bestLag = -1;
   let bestCorrelation = -1;
 
-  for (let lag = minLag; lag <= maxLag && lag < centered.length / 2; lag += 1) {
+  const firstCorrelationLag = Math.max(1, minLag - 1);
+  const lastCorrelationLag = Math.min(Math.floor(centered.length / 2) - 1, maxLag + 1);
+  for (let lag = firstCorrelationLag; lag <= lastCorrelationLag; lag += 1) {
     let crossProduct = 0;
     let leftEnergy = 0;
     let rightEnergy = 0;
@@ -87,7 +89,7 @@ export function estimatePpgHeartRate(samples: readonly PpgSample[]): PpgEstimate
     const denominator = Math.sqrt(leftEnergy * rightEnergy);
     const correlation = denominator > 0 ? crossProduct / denominator : 0;
     correlations[lag] = correlation;
-    if (correlation > bestCorrelation) {
+    if (lag >= minLag && lag <= maxLag && correlation > bestCorrelation) {
       bestCorrelation = correlation;
       bestLag = lag;
     }
@@ -97,21 +99,50 @@ export function estimatePpgHeartRate(samples: readonly PpgSample[]): PpgEstimate
     return { bpm: null, quality: null };
   }
 
-  let refinedLag = bestLag;
-  const before = correlations[bestLag - 1];
-  const after = correlations[bestLag + 1];
+  // Autocorrelation often has a stronger peak at two pulse intervals than at
+  // one, which halves the reported rate. Prefer the earliest credible local
+  // peak close to the strongest one so the fundamental pulse period wins.
+  const candidateFloor = Math.max(MIN_CORRELATION, bestCorrelation * 0.8);
+  let selectedLag = bestLag;
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    const correlation = correlations[lag];
+    const before = correlations[lag - 1];
+    const after = correlations[lag + 1];
+    if (
+      correlation !== undefined &&
+      before !== undefined &&
+      after !== undefined &&
+      correlation >= candidateFloor &&
+      correlation >= before &&
+      correlation >= after
+    ) {
+      selectedLag = lag;
+      break;
+    }
+  }
+
+  const selectedCorrelation = correlations[selectedLag] ?? bestCorrelation;
+  let refinedLag = selectedLag;
+  const before = correlations[selectedLag - 1];
+  const after = correlations[selectedLag + 1];
   if (before !== undefined && after !== undefined) {
-    const curvature = before - 2 * bestCorrelation + after;
+    const curvature = before - 2 * selectedCorrelation + after;
     if (Math.abs(curvature) > 1e-8) {
-      const offset = Math.max(-0.5, Math.min(0.5, 0.5 * (before - after) / curvature));
+      const offset = Math.max(
+        -0.5,
+        Math.min(0.5, 0.5 * (before - after) / curvature),
+      );
       refinedLag += offset;
     }
   }
 
-  const quality = Math.round(Math.max(0, Math.min(100, ((bestCorrelation - 0.1) / 0.7) * 100)));
+  const quality = Math.round(
+    Math.max(0, Math.min(100, ((selectedCorrelation - 0.1) / 0.7) * 100)),
+  );
+  refinedLag = Math.max(minLag, Math.min(maxLag, refinedLag));
   const bpm = (RESAMPLE_RATE * 60) / refinedLag;
 
-  if (bestCorrelation < MIN_CORRELATION || bpm < MIN_BPM || bpm > MAX_BPM) {
+  if (selectedCorrelation < MIN_CORRELATION || bpm < MIN_BPM || bpm > MAX_BPM) {
     return { bpm: null, quality };
   }
 

@@ -350,7 +350,7 @@ export function useFingertipPpg() {
         if (estimate.bpm !== null) {
           const history = bpmHistoryRef.current;
           history.push(estimate.bpm);
-          if (history.length > 5) history.shift();
+          if (history.length > 3) history.shift();
           latestGoodEstimateAtRef.current = performance.now();
           setBpm(median(history));
           setPhase('live');
