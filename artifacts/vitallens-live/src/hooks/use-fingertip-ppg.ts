@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   estimatePpgHeartRate,
+  estimatePpgVariability,
   type PpgEstimate,
+  type PpgVariabilityEstimate,
 } from '../lib/fingertip-ppg-signal';
 import { createMeasurementReport, type MeasurementReportReading } from '../lib/measurement-report-data';
 import type { MeasurementReportData } from '../components/measurement-report';
@@ -13,9 +15,10 @@ import type {
   PpgTorchStatus,
 } from '../lib/fingertip-ppg-types';
 
-const SAMPLE_INTERVAL_MS = 65;
+const SAMPLE_INTERVAL_MS = 32;
 const BASELINE_WINDOW_SECONDS = 2.4;
-const FILTER_ALPHA = 0.2;
+const FILTER_ALPHA = 0.72;
+const SIGNAL_WINDOW_SECONDS = 75;
 const PUBLISH_INTERVAL_MS = 250;
 const DISPLAY_SAMPLE_LIMIT = 180;
 
@@ -64,6 +67,7 @@ export function useFingertipPpg() {
   const [cameraActive, setCameraActive] = useState(false);
   const [bpm, setBpm] = useState<number | null>(null);
   const [signalQuality, setSignalQuality] = useState<number | null>(null);
+  const [variability, setVariability] = useState<PpgVariabilityEstimate | null>(null);
   const [torchStatus, setTorchStatus] = useState<PpgTorchStatus>('idle');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -161,6 +165,25 @@ export function useFingertipPpg() {
     publishFinalState();
     if (startedAtRef.current > 0) {
       const durationSeconds = (performance.now() - startedAtRef.current) / 1000;
+      const finalVariability = estimatePpgVariability(recordingSamplesRef.current);
+      setVariability(finalVariability);
+      if (
+        finalVariability.sdnnMs !== null &&
+        finalVariability.rmssdMs !== null &&
+        finalVariability.pnn50Percent !== null &&
+        finalVariability.meanPpiMs !== null
+      ) {
+        reportReadingsRef.current.push({
+          elapsedSeconds: durationSeconds,
+          signalQualityPercent: median(reportSignalQualityRef.current),
+          heartRate: null,
+          respiratoryRate: null,
+          hrvSdnn: { value: finalVariability.sdnnMs, confidence: null, unit: 'ms' },
+          hrvRmssd: { value: finalVariability.rmssdMs, confidence: null, unit: 'ms' },
+          hrvPnn50: { value: finalVariability.pnn50Percent, confidence: null, unit: '%' },
+          meanPulseInterval: { value: finalVariability.meanPpiMs, confidence: null, unit: 'ms' },
+        });
+      }
       setReport(createMeasurementReport({
         source: 'fingertip',
         durationSeconds,
@@ -189,6 +212,7 @@ export function useFingertipPpg() {
     setErrorMessage(null);
     setBpm(null);
     setSignalQuality(null);
+    setVariability(null);
     setTorchStatus('checking');
     setElapsedSeconds(0);
     setSamples([]);
@@ -221,7 +245,7 @@ export function useFingertipPpg() {
           facingMode: { ideal: 'environment' },
           width: { ideal: 640 },
           height: { ideal: 480 },
-          frameRate: { ideal: 24, max: 30 },
+          frameRate: { ideal: 30, max: 30 },
         },
       });
 
@@ -339,7 +363,7 @@ export function useFingertipPpg() {
               signalWindow.push(sample);
               while (
                 signalWindow.length > 0 &&
-                elapsed - (signalWindow[0]?.elapsedSeconds ?? elapsed) > 16
+                elapsed - (signalWindow[0]?.elapsedSeconds ?? elapsed) > SIGNAL_WINDOW_SECONDS
               ) {
                 signalWindow.shift();
               }
@@ -364,6 +388,8 @@ export function useFingertipPpg() {
         if (runToken !== runTokenRef.current || !cameraActiveRef.current) return;
         const elapsed = (performance.now() - startedAtRef.current) / 1000;
         const estimate: PpgEstimate = estimatePpgHeartRate(signalWindowRef.current);
+        const variabilityEstimate = estimatePpgVariability(signalWindowRef.current);
+        setVariability(variabilityEstimate);
         setElapsedSeconds(elapsed);
         setSignalQuality(estimate.quality);
         setSampleCount(recordingSamplesRef.current.length);
@@ -387,10 +413,21 @@ export function useFingertipPpg() {
           if (estimate.bpm !== null) {
             reportReadingsRef.current.push({
               elapsedSeconds: elapsed,
+              signalQualityPercent: estimate.quality,
               heartRate: { value: estimate.bpm, confidence: null, unit: 'bpm' },
               respiratoryRate: null,
-              hrvSdnn: null,
-              hrvRmssd: null,
+              hrvSdnn: variabilityEstimate.sdnnMs === null
+                ? null
+                : { value: variabilityEstimate.sdnnMs, confidence: null, unit: 'ms' },
+              hrvRmssd: variabilityEstimate.rmssdMs === null
+                ? null
+                : { value: variabilityEstimate.rmssdMs, confidence: null, unit: 'ms' },
+              hrvPnn50: variabilityEstimate.pnn50Percent === null
+                ? null
+                : { value: variabilityEstimate.pnn50Percent, confidence: null, unit: '%' },
+              meanPulseInterval: variabilityEstimate.meanPpiMs === null
+                ? null
+                : { value: variabilityEstimate.meanPpiMs, confidence: null, unit: 'ms' },
             });
           }
           lastReportReadingAtRef.current = elapsed;
@@ -440,28 +477,67 @@ export function useFingertipPpg() {
     const recordedSamples = recordingSamplesRef.current;
     if (recordedSamples.length === 0) return;
 
+    const header =
+      'record_type,elapsed_seconds,green_mean,filtered_signal,breathing_event,heart_rate_bpm,signal_quality_percent,sdnn_ms,rmssd_ms,pnn50_percent,mean_pulse_interval_ms';
     const rows = [
-      'record_type,elapsed_seconds,green_mean,filtered_signal,breathing_event',
-      ...recordedSamples.map((sample) =>
-        `sample,${sample.elapsedSeconds.toFixed(3)},${csvNumber(sample.greenMean)},${csvNumber(sample.filteredSignal)},`,
-      ),
-      ...breathingMarkersRef.current.map((marker) =>
-        `marker,${marker.elapsedSeconds.toFixed(3)},,,${marker.event}`,
-      ),
+      ...recordedSamples.map((sample) => ({
+        time: sample.elapsedSeconds,
+        row: [
+          'sample',
+          sample.elapsedSeconds.toFixed(3),
+          csvNumber(sample.greenMean),
+          csvNumber(sample.filteredSignal),
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ].join(','),
+      })),
+      ...reportReadingsRef.current.map((reading) => ({
+        time: reading.elapsedSeconds,
+        row: [
+          'estimate',
+          reading.elapsedSeconds.toFixed(3),
+          '',
+          '',
+          '',
+          reading.heartRate?.value === null || !reading.heartRate
+            ? ''
+            : csvNumber(reading.heartRate.value),
+          reading.signalQualityPercent == null
+            ? ''
+            : csvNumber(reading.signalQualityPercent),
+          reading.hrvSdnn?.value == null ? '' : csvNumber(reading.hrvSdnn.value),
+          reading.hrvRmssd?.value == null ? '' : csvNumber(reading.hrvRmssd.value),
+          reading.hrvPnn50?.value == null ? '' : csvNumber(reading.hrvPnn50.value),
+          reading.meanPulseInterval?.value == null
+            ? ''
+            : csvNumber(reading.meanPulseInterval.value),
+        ].join(','),
+      })),
+      ...breathingMarkersRef.current.map((marker) => ({
+        time: marker.elapsedSeconds,
+        row: [
+          'marker',
+          marker.elapsedSeconds.toFixed(3),
+          '',
+          '',
+          marker.event,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ].join(','),
+      })),
     ];
-    const markerStart = recordedSamples.length + 1;
-    const header = rows[0];
-    const sampleRows = rows.slice(1, markerStart).map((row, index) => ({
-      time: recordedSamples[index]?.elapsedSeconds ?? 0,
-      row,
-    }));
-    const markerRows = breathingMarkersRef.current.map((marker, index) => ({
-      time: marker.elapsedSeconds,
-      row: rows[markerStart + index] ?? '',
-    }));
     const csv = [
       header,
-      ...[...sampleRows, ...markerRows]
+      ...rows
         .sort((left, right) => left.time - right.time)
         .map((entry) => entry.row),
     ].join('\r\n');
@@ -481,6 +557,7 @@ export function useFingertipPpg() {
     cameraActive,
     bpm,
     signalQuality,
+    variability,
     torchStatus,
     elapsedSeconds,
     errorMessage,

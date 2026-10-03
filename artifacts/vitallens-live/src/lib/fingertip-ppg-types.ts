@@ -1,4 +1,5 @@
 import type { MeasurementReportData } from '../components/measurement-report';
+import type { PpgVariabilityEstimate } from './fingertip-ppg-signal';
 
 export type PpgModePhase = 'idle' | 'starting' | 'warming' | 'live' | 'error';
 
@@ -23,6 +24,7 @@ export interface PpgModeProps {
   cameraActive: boolean;
   bpm: number | null;
   signalQuality: number | null;
+  variability: PpgVariabilityEstimate | null;
   torchStatus: PpgTorchStatus;
   elapsedSeconds: number;
   errorMessage: string | null;

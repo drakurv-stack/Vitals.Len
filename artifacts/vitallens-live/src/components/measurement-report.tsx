@@ -3,7 +3,7 @@ import { Activity, ArrowLeft, CalendarClock, Check, Clock3, Fingerprint, HeartPu
 import './measurement-report.css';
 
 export type MeasurementReportMetric = {
-  key: 'heartRate' | 'respiratoryRate' | 'hrvSdnn' | 'hrvRmssd';
+  key: 'heartRate' | 'respiratoryRate' | 'hrvSdnn' | 'hrvRmssd' | 'hrvPnn50' | 'meanPulseInterval';
   label: string;
   value: number | null;
   unit: string;
@@ -32,8 +32,10 @@ export type MeasurementReportProps = {
 const metricExplanations: Record<MeasurementReportMetric['key'], string> = {
   heartRate: 'An estimate of how many heartbeats occur in one minute, based on this session’s camera-derived signal.',
   respiratoryRate: 'An estimate of breaths per minute. This value is only shown when the session returned a reading.',
-  hrvSdnn: 'SDNN describes the spread of the time intervals between detected heartbeats in this session.',
-  hrvRmssd: 'RMSSD describes short-term changes between successive heartbeat intervals in this session.',
+  hrvSdnn: 'SDNN describes the spread of detected optical pulse-to-pulse intervals in this session.',
+  hrvRmssd: 'RMSSD describes short-term changes between successive optical pulse-to-pulse intervals in this session.',
+  hrvPnn50: 'pNN50 is the share of successive optical pulse intervals that differ by more than 50 ms.',
+  meanPulseInterval: 'The average time between detected optical pulses during this session.',
 };
 
 const metricIcons = {
@@ -41,6 +43,8 @@ const metricIcons = {
   respiratoryRate: Wind,
   hrvSdnn: Activity,
   hrvRmssd: Activity,
+  hrvPnn50: Activity,
+  meanPulseInterval: Activity,
 };
 
 function formatDuration(seconds: number): string {

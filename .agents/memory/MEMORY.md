@@ -1,2 +1,2 @@
 - [Python toolchain selection](python-toolchain-selection.md) — confirm the interpreter chosen by `uv` before changing Python modules; module selection can point installs at a different runtime.
-- [VitalLens report evidence](vitallens-report-evidence.md) — keep reports tied to one modality and only its measured session values; never imply unmeasured health or wellness scores.
+- [VitalLens report evidence](vitallens-report-evidence.md) — include only measured, modality-specific values; PPG interval variability requires quality gates and must not be presented as ECG data.

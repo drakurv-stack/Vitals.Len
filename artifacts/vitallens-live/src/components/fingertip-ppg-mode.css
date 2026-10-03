@@ -104,6 +104,18 @@
 .ppg-quality-track { height: 4px; margin-top: 8px; overflow: hidden; border-radius: 5px; background: #e7e9df; }
 .ppg-quality-track > span { display: block; height: 100%; border-radius: inherit; background: #8ba58a; transition: width .35s ease; }
 .ppg-quality p { margin: 6px 0 0; color: #929b91; font-size: 8px; line-height: 1.4; }
+.ppg-variability { margin-top: 14px; padding: 11px 12px 10px; border: 1px solid #e7e6dc; border-radius: 5px; background: #faf9f4; }
+.ppg-variability-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #718176; }
+.ppg-variability-heading strong { font-size: 9px; font-weight: 600; }
+.ppg-variability-heading > span { color: #9aa298; font: 7px var(--app-font-mono, monospace); letter-spacing: .06em; }
+.ppg-variability-progress { height: 3px; margin-top: 8px; overflow: hidden; border-radius: 4px; background: #e7e9df; }
+.ppg-variability-progress > span { display: block; height: 100%; border-radius: inherit; background: #8ba58a; transition: width .25s ease; }
+.ppg-variability-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.ppg-variability-card { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 9px; border: 1px solid #eeede5; border-radius: 4px; background: #fffefa; }
+.ppg-variability-card > span { color: #889389; font: 7px var(--app-font-mono, monospace); letter-spacing: .05em; }
+.ppg-variability-card strong { color: #4c6855; font: 600 14px var(--app-font-serif, 'Manrope', sans-serif); font-variant-numeric: tabular-nums; }
+.ppg-variability-card small { margin-left: 3px; color: #939d92; font: 7px var(--app-font-mono, monospace); }
+.ppg-variability > p { margin: 7px 0 0; color: #89938a; font-size: 8px; line-height: 1.45; }
 .ppg-wave { margin-top: 14px; padding: 9px 10px 8px; border: 1px solid #e8e7de; border-radius: 5px; background: #f8f7f1; }
 .ppg-wave-top, .ppg-wave-legend { display: flex; align-items: center; justify-content: space-between; color: #9ba398; font: 7px var(--app-font-mono, monospace); letter-spacing: .08em; }
 .ppg-wave-top > span:first-child { display: flex; align-items: center; gap: 6px; color: #7d8c80; }

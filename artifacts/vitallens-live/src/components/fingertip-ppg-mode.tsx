@@ -61,12 +61,35 @@ function SignalPlot({ samples, sampleCount, active, markers }: Pick<PpgModeProps
   );
 }
 
+function VariabilityCard({
+  label,
+  value,
+  unit,
+  precision = 1,
+}: {
+  label: string;
+  value: number | null;
+  unit: string;
+  precision?: number;
+}) {
+  return (
+    <article className="ppg-variability-card">
+      <span>{label}</span>
+      <strong data-testid={`metric-${label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`}>
+        {value === null ? '—' : value.toFixed(precision)}
+        <small>{value === null ? '' : unit}</small>
+      </strong>
+    </article>
+  );
+}
+
 export function FingertipPpgMode({
   videoRef,
   phase,
   cameraActive,
   bpm,
   signalQuality,
+  variability,
   torchStatus,
   elapsedSeconds,
   errorMessage,
@@ -83,6 +106,14 @@ export function FingertipPpgMode({
   const active = cameraActive || phase === 'starting' || phase === 'warming' || phase === 'live';
   const qualityPercent = signalQuality === null ? null : Math.round(Math.min(100, Math.max(0, signalQuality)));
   const qualityLabel = qualityPercent === null ? 'Waiting' : qualityPercent >= 75 ? 'Strong' : qualityPercent >= 45 ? 'Fair' : 'Low';
+  const variabilityReady = Boolean(
+    variability &&
+    variability.sdnnMs !== null &&
+    variability.rmssdMs !== null &&
+    variability.pnn50Percent !== null &&
+    variability.meanPpiMs !== null,
+  );
+  const variabilityProgress = Math.min(60, variability?.windowSeconds ?? 0);
   const torchLabel = {
     idle: 'Start a session to check support',
     checking: 'Checking torch support',
@@ -169,6 +200,30 @@ export function FingertipPpgMode({
             <div className="ppg-quality-track" role="meter" aria-label="Signal quality" aria-valuemin={0} aria-valuemax={100} aria-valuenow={qualityPercent ?? 0}><span style={{ width: `${qualityPercent ?? 0}%` }} /></div>
             <p>{qualityPercent !== null && qualityPercent >= 75 ? 'Good contact. Keep your finger relaxed and still.' : 'Use light, steady pressure. Avoid pressing hard or shifting.'}</p>
           </div>
+
+          <section className="ppg-variability" aria-label="Pulse interval variability" data-testid="ppg-variability">
+            <div className="ppg-variability-heading">
+              <strong>Pulse interval variability</strong>
+              <span>{variabilityReady ? '60 SEC · PPG' : `${Math.floor(variabilityProgress)} / 60 SEC`}</span>
+            </div>
+            <div
+              className="ppg-variability-progress"
+              role="progressbar"
+              aria-label="Clean signal collected for pulse variability"
+              aria-valuemin={0}
+              aria-valuemax={60}
+              aria-valuenow={Math.floor(variabilityProgress)}
+            >
+              <span style={{ width: `${(variabilityProgress / 60) * 100}%` }} />
+            </div>
+            <div className="ppg-variability-grid">
+              <VariabilityCard label="SDNN" value={variability?.sdnnMs ?? null} unit="ms" />
+              <VariabilityCard label="RMSSD" value={variability?.rmssdMs ?? null} unit="ms" />
+              <VariabilityCard label="pNN50" value={variability?.pnn50Percent ?? null} unit="%" />
+              <VariabilityCard label="Mean PPI" value={variability?.meanPpiMs ?? null} unit="ms" precision={0} />
+            </div>
+            <p>Estimated from optical pulse-to-pulse intervals, not ECG. Values appear only after 60 seconds of clean signal.</p>
+          </section>
 
           <SignalPlot samples={samples} sampleCount={sampleCount} active={phase === 'live'} markers={markers} />
 

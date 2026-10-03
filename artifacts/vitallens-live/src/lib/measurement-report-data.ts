@@ -7,7 +7,9 @@ export type MeasurementMetricKey =
   | 'heartRate'
   | 'respiratoryRate'
   | 'hrvSdnn'
-  | 'hrvRmssd';
+  | 'hrvRmssd'
+  | 'hrvPnn50'
+  | 'meanPulseInterval';
 
 export interface MeasurementMetricValue {
   value: number | null;
@@ -17,10 +19,13 @@ export interface MeasurementMetricValue {
 
 export interface MeasurementReportReading {
   elapsedSeconds: number;
+  signalQualityPercent?: number | null;
   heartRate: MeasurementMetricValue | null;
   respiratoryRate: MeasurementMetricValue | null;
   hrvSdnn: MeasurementMetricValue | null;
   hrvRmssd: MeasurementMetricValue | null;
+  hrvPnn50?: MeasurementMetricValue | null;
+  meanPulseInterval?: MeasurementMetricValue | null;
 }
 
 interface CreateMeasurementReportOptions {
@@ -40,6 +45,8 @@ const METRIC_DETAILS: Record<
   respiratoryRate: { label: 'Respiratory rate', unit: 'breaths/min' },
   hrvSdnn: { label: 'HRV · SDNN', unit: 'ms' },
   hrvRmssd: { label: 'HRV · RMSSD', unit: 'ms' },
+  hrvPnn50: { label: 'HRV · pNN50', unit: '%' },
+  meanPulseInterval: { label: 'Mean pulse interval', unit: 'ms' },
 };
 
 function median(values: readonly number[]): number | null {
@@ -101,7 +108,13 @@ function createSummary(
     }
   }
 
-  for (const key of ['respiratoryRate', 'hrvSdnn', 'hrvRmssd'] as const) {
+  for (const key of [
+    'respiratoryRate',
+    'hrvSdnn',
+    'hrvRmssd',
+    'hrvPnn50',
+    'meanPulseInterval',
+  ] as const) {
     const metric = metrics.find((item) => item.key === key);
     if (metric?.value !== null && metric?.value !== undefined) {
       details.push(
@@ -135,7 +148,7 @@ export function createMeasurementReport({
 }: CreateMeasurementReportOptions): MeasurementReportData {
   const keys: MeasurementMetricKey[] =
     source === 'fingertip'
-      ? ['heartRate']
+      ? ['heartRate', 'hrvSdnn', 'hrvRmssd', 'hrvPnn50', 'meanPulseInterval']
       : ['heartRate', 'respiratoryRate', 'hrvSdnn', 'hrvRmssd'];
 
   const metrics = keys
@@ -146,7 +159,11 @@ export function createMeasurementReport({
           !metric ||
           metric.value === null ||
           !Number.isFinite(metric.value) ||
-          metric.value <= 0
+          metric.value < 0 ||
+          (metric.value === 0 &&
+            key !== 'hrvSdnn' &&
+            key !== 'hrvRmssd' &&
+            key !== 'hrvPnn50')
         ) {
           return [];
         }
