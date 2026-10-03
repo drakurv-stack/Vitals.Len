@@ -199,8 +199,6 @@ export function useFingertipPpg() {
     startedAtRef.current = 0;
   }, [publishFinalState, releaseCamera]);
 
-  const closeReport = useCallback(() => setReport(null), []);
-
   const start = useCallback(async () => {
     if (cameraActiveRef.current) return;
 
@@ -567,7 +565,6 @@ export function useFingertipPpg() {
     report,
     onStart: start,
     onStop: stop,
-    onCloseReport: closeReport,
     onMarkBreathing: markBreathing,
     onExportCsv: exportCsv,
   };

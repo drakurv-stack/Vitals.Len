@@ -5,11 +5,12 @@ import { useGetLiveDemoStatus, usePushLiveFrame, useStartLiveSession, useStopLiv
 import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FingertipPpgMode } from '@/components/fingertip-ppg-mode';
-import { MeasurementReport, type MeasurementReportData } from '@/components/measurement-report';
+import { MeasurementReport } from '@/components/measurement-report';
 import { StressCheck } from '@/components/stress-check';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { createMeasurementReport, type MeasurementReportReading } from '@/lib/measurement-report-data';
+import { MeasurementReportProvider, useMeasurementReport } from '@/lib/measurement-report-context';
 import { useFingertipPpg } from '@/hooks/use-fingertip-ppg';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
@@ -59,11 +60,12 @@ function AppHome() {
   const startSession = useStartLiveSession();
   const pushFrame = usePushLiveFrame();
   const stopSession = useStopLiveSession();
+  const { setReport, clearReport } = useMeasurementReport();
+  const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [inference, setInference] = useState<LiveInferenceUpdate | null>(null);
-  const [report, setReport] = useState<MeasurementReportData | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [errorText, setErrorText] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -79,8 +81,6 @@ function AppHome() {
   pushFrameRef.current = pushFrame.mutateAsync;
   const stopMutateRef = useRef(stopSession.mutate);
   stopMutateRef.current = stopSession.mutate;
-  const closeReport = useCallback(() => setReport(null), []);
-
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
@@ -122,7 +122,8 @@ function AppHome() {
     setInference(null);
     setPhase('idle');
     startedAtRef.current = 0;
-  }, [stopCamera, stopSession]);
+    setLocation('/report');
+  }, [setLocation, setReport, stopCamera, stopSession]);
 
   useEffect(() => {
     if (!sessionId || !stream || phase === 'stopping') return;
@@ -213,7 +214,7 @@ function AppHome() {
   const begin = async () => {
     setErrorText('');
     setInference(null);
-    setReport(null);
+    clearReport();
     setElapsed(0);
     setPhase('camera');
     reportReadingsRef.current = [];
@@ -403,14 +404,52 @@ function AppHome() {
         <span><span className="footer-dot" /> WELLNESS ONLY <span className="footer-sep">·</span> NOT MEDICAL ADVICE</span>
         <span>Frames are transient <span className="footer-sep">·</span> No video retained</span>
       </footer>
-      {report && <MeasurementReport report={report} onClose={closeReport} />}
     </main>
   );
 }
 
 function FingertipPpgPage() {
-  const ppgProps = useFingertipPpg();
+  const { report, ...ppgProps } = useFingertipPpg();
+  const { setReport } = useMeasurementReport();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!report) return;
+    setReport(report);
+    setLocation('/report');
+  }, [report, setLocation, setReport]);
+
   return <FingertipPpgMode {...ppgProps} />;
+}
+
+function MeasurementReportPage() {
+  const { report, clearReport } = useMeasurementReport();
+  const [, setLocation] = useLocation();
+
+  const continueToMeasurement = useCallback(() => {
+    const destination = report?.source === 'fingertip' ? '/ppg' : '/';
+    clearReport();
+    setLocation(destination);
+  }, [clearReport, report, setLocation]);
+
+  if (!report) {
+    return (
+      <main className="vl-report-missing" data-testid="status-report-unavailable">
+        <div>
+          <span className="vl-report-missing-mark" aria-hidden="true">V</span>
+          <p className="vl-report-missing-eyebrow">VITALLENS LIVE</p>
+          <h1>There’s no session report here.</h1>
+          <p>Reports are available after a measurement and remain in this tab only.</p>
+          <div className="vl-report-missing-links">
+            <Link href="/">Start a face-camera session</Link>
+            <Link href="/ppg">Start a fingertip session</Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return <MeasurementReport report={report} onClose={continueToMeasurement} />;
 }
 
 function Router() {
@@ -419,6 +458,7 @@ function Router() {
       <Switch>
         <Route path="/" component={AppHome} />
         <Route path="/ppg" component={FingertipPpgPage} />
+        <Route path="/report" component={MeasurementReportPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
@@ -435,7 +475,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
+          <MeasurementReportProvider>
+            <Router />
+          </MeasurementReportProvider>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

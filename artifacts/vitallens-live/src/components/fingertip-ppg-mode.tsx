@@ -16,7 +16,6 @@ import {
   Wind,
 } from 'lucide-react';
 import type { PpgModeProps } from '../lib/fingertip-ppg-types';
-import { MeasurementReport } from './measurement-report';
 import { Link } from 'wouter';
 import './fingertip-ppg-mode.css';
 
@@ -96,10 +95,8 @@ export function FingertipPpgMode({
   samples,
   sampleCount,
   markers,
-  report,
   onStart,
   onStop,
-  onCloseReport,
   onMarkBreathing,
   onExportCsv,
 }: PpgModeProps) {
@@ -272,7 +269,6 @@ export function FingertipPpgMode({
         <span><span className="ppg-footer-mark">V</span> VitalLens Live <i>/</i> fingertip mode</span>
         <span>LOCAL SIGNAL PROCESSING <i>·</i> WELLNESS ONLY</span>
       </footer>
-      {report && <MeasurementReport report={report} onClose={onCloseReport} />}
     </main>
   );
 }

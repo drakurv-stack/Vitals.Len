@@ -1,4 +1,3 @@
-import type { MeasurementReportData } from '../components/measurement-report';
 import type { PpgVariabilityEstimate } from './fingertip-ppg-signal';
 
 export type PpgModePhase = 'idle' | 'starting' | 'warming' | 'live' | 'error';
@@ -31,10 +30,8 @@ export interface PpgModeProps {
   samples: readonly PpgSample[];
   sampleCount: number;
   markers: readonly PpgBreathingMarker[];
-  report: MeasurementReportData | null;
   onStart: () => void;
   onStop: () => void;
-  onCloseReport: () => void;
   onMarkBreathing: (event: PpgBreathingEvent) => void;
   onExportCsv: () => void;
 }
