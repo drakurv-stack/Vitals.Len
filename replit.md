@@ -6,7 +6,8 @@ A browser camera demo for the imported VitalLens Python library. It sends compre
 
 - Start the `artifacts/vitallens-live: web` workflow for the camera demo.
 - Start the `artifacts/api-server: API Server` workflow for the live inference endpoints.
-- `uv sync --python 3.13` — install the Python runtime dependencies used by the VitalLens worker.
+- `pnpm install --frozen-lockfile` — install the JavaScript workspace dependencies.
+- `UV_PROJECT_ENVIRONMENT=.pythonlibs uv sync --python 3.13 --frozen` — install the Python runtime dependencies where the VitalLens worker expects them.
 - `pnpm run typecheck` — typecheck workspace libraries and artifacts.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec.
 - Required Replit Secret: `VITALLENS_API_KEY` — a VitalLens API key. Keep it in Replit Secrets; do not place it in source code.
