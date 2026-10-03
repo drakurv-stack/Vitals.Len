@@ -4,6 +4,7 @@ import { Aperture, ArrowUpRight, Check, ChevronRight, CircleAlert, CircleHelp, C
 import { useGetLiveDemoStatus, usePushLiveFrame, useStartLiveSession, useStopLiveSession } from '@workspace/api-client-react';
 import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { StressCheck } from '@/components/stress-check';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -313,6 +314,12 @@ function AppHome() {
             <Metric label="HRV · RMSSD" symbol="RMSSD" metric={visibleInference?.hrvRmssd ?? null} precision={1} emptyLabel={emptyMetricLabel} />
           </div>
           <div className="metric-note" role="note"><Info size={13} /><span>HRV (SDNN and RMSSD) measures beat-to-beat timing variation, needs at least 20 seconds of clean signal, and may require a VitalLens plan that supports HRV.</span></div>
+          <StressCheck
+            current={isRunning && phase === 'live' ? visibleInference : null}
+            sessionActive={isRunning}
+            noFace={phase === 'no-face'}
+            sessionId={sessionId}
+          />
           <SignalTrace active={isRunning && phase === 'live'} />
 
           <div className={`guidance-panel ${phase === 'no-face' ? 'guidance-warn' : phase === 'live' ? 'guidance-live' : ''}`}>

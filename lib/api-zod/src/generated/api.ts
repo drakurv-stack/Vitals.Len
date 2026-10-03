@@ -50,7 +50,12 @@ export const PushLiveFrameBody = zod.object({
   "timestamp": zod.number().describe('Monotonic time in seconds since the stream started')
 })
 
+export const pushLiveFrameResponseResultSequenceMin = 0;
+
+
+
 export const PushLiveFrameResponse = zod.object({
+  "resultSequence": zod.number().int().min(pushLiveFrameResponseResultSequenceMin).describe('Increases only when a new inference result is produced for this session.'),
   "faceDetected": zod.boolean(),
   "heartRate": zod.union([zod.object({
   "value": zod.number(),

@@ -165,6 +165,10 @@ components:
     LiveInferenceUpdate:
       type: object
       properties:
+        resultSequence:
+          type: integer
+          minimum: 0
+          description: Increases only when a new inference result is produced for this session.
         faceDetected:
           type: boolean
         heartRate:
@@ -183,7 +187,7 @@ components:
           oneOf:
             - $ref: "#/components/schemas/VitalMetric"
             - type: "null"
-      required: [faceDetected, heartRate, respiratoryRate, hrvSdnn, hrvRmssd]
+      required: [resultSequence, faceDetected, heartRate, respiratoryRate, hrvSdnn, hrvRmssd]
     ErrorResponse:
       type: object
       properties:

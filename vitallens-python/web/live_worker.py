@@ -20,8 +20,9 @@ from vitallens import VitalLens
 
 OUTPUT_LOCK = threading.Lock()
 UPDATE_LOCK = threading.Lock()
-def empty_update():
+def empty_update(result_sequence=0):
     return {
+        "resultSequence": result_sequence,
         "faceDetected": False,
         "heartRate": None,
         "respiratoryRate": None,
@@ -91,14 +92,19 @@ def main():
         client = VitalLens(method="vitallens", api_key=api_key)
         client.rppg.fps_target = 8.0
         session = None
+        result_sequence = 0
 
         def on_result(results):
+            nonlocal result_sequence
             if not results:
                 return
             update = make_update(results[0])
-            if session is None or session.current_face is None or not update["faceDetected"]:
-                update = empty_update()
             with UPDATE_LOCK:
+                if session is None or session.current_face is None or not update["faceDetected"]:
+                    update = empty_update(result_sequence)
+                else:
+                    result_sequence += 1
+                    update["resultSequence"] = result_sequence
                 latest_update.update(update)
             emit({"type": "result", "update": update})
 
@@ -174,7 +180,7 @@ def main():
                 if face_detected:
                     update = dict(latest_update)
                 else:
-                    update = empty_update()
+                    update = empty_update(result_sequence)
                     latest_update.update(update)
             update["faceDetected"] = face_detected
             emit({"type": "frame", "requestId": request_id, "update": update})

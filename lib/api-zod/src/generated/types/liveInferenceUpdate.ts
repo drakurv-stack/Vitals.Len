@@ -8,6 +8,11 @@
 import type { VitalMetric } from './vitalMetric';
 
 export interface LiveInferenceUpdate {
+  /**
+     * Increases only when a new inference result is produced for this session.
+     * @minimum 0
+     */
+  resultSequence: number;
   faceDetected: boolean;
   heartRate: VitalMetric | null;
   respiratoryRate: VitalMetric | null;

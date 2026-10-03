@@ -42,6 +42,7 @@ interface LiveWorker {
 }
 
 const emptyUpdate: LiveInferenceUpdate = PushLiveFrameResponse.parse({
+  resultSequence: 0,
   faceDetected: false,
   heartRate: null,
   respiratoryRate: null,
