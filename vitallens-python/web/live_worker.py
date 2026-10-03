@@ -8,9 +8,13 @@ import math
 import os
 import sys
 import threading
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from vitallens import VitalLens
 
 
