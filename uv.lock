@@ -796,6 +796,7 @@ dependencies = [
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "pandas" },
+    { name = "pillow" },
     { name = "prpy", extra = ["ffmpeg", "numpy-min"] },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -807,13 +808,14 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "matplotlib", specifier = ">=3.11.2" },
-    { name = "numpy", specifier = ">=1.24" },
-    { name = "onnxruntime", specifier = ">=1.15.0" },
+    { name = "numpy", specifier = "==2.5.3" },
+    { name = "onnxruntime", specifier = "==1.30.0" },
     { name = "pandas", specifier = ">=3.0.6" },
-    { name = "prpy", extras = ["ffmpeg", "numpy-min"], specifier = ">=0.3.13" },
-    { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "pyyaml", specifier = ">=6.0.1" },
-    { name = "requests", specifier = ">=2.32.0" },
+    { name = "pillow", specifier = "==12.3.0" },
+    { name = "prpy", extras = ["ffmpeg", "numpy-min"], specifier = "==0.4.4" },
+    { name = "python-dotenv", specifier = "==1.2.4" },
+    { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "requests", specifier = "==2.34.2" },
     { name = "standard-imghdr", specifier = ">=3.13.0" },
     { name = "vitallens-core", specifier = "==0.2.5" },
 ]
