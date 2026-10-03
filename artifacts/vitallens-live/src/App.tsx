@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Aperture, ArrowUpRight, Check, ChevronRight, CircleAlert, CircleHelp, Clock3, Eye, EyeOff, HeartPulse, Info, LoaderCircle, LockKeyhole, Radio, RefreshCw, ShieldCheck, Square, Video, Wifi } from 'lucide-react';
+import { Activity, Aperture, ArrowUpRight, Check, ChevronRight, CircleAlert, CircleHelp, Clock3, Eye, EyeOff, HeartPulse, Info, LoaderCircle, LockKeyhole, Radio, RefreshCw, ShieldCheck, Square, Video, Wifi } from 'lucide-react';
 import { useGetLiveDemoStatus, usePushLiveFrame, useStartLiveSession, useStopLiveSession } from '@workspace/api-client-react';
 import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { FingertipPpgMode } from '@/components/fingertip-ppg-mode';
 import { StressCheck } from '@/components/stress-check';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useFingertipPpg } from '@/hooks/use-fingertip-ppg';
 import NotFound from '@/pages/not-found';
-import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 type Phase = 'idle' | 'camera' | 'starting' | 'no-face' | 'calibrating' | 'live' | 'stopping' | 'denied' | 'error';
@@ -226,6 +228,9 @@ function AppHome() {
         </a>
         <div className="topbar-right">
           <span className="demo-label"><span className="demo-dot" />BROWSER DEMO</span>
+          <Link className="ppg-nav-link" href="/ppg" data-testid="link-fingertip-ppg">
+            <Activity size={15} /> Fingertip PPG
+          </Link>
           <button className="about-link" type="button" onClick={() => setShowPrivacy((value) => !value)} data-testid="button-privacy">
             <CircleHelp size={16} /> How it works
           </button>
@@ -354,11 +359,17 @@ function AppHome() {
   );
 }
 
+function FingertipPpgPage() {
+  const ppgProps = useFingertipPpg();
+  return <FingertipPpgMode {...ppgProps} />;
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={AppHome} />
+        <Route path="/ppg" component={FingertipPpgPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
