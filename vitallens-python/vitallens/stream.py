@@ -274,6 +274,9 @@ class StreamSession:
       if len(faces_rel) > 0 and len(faces_rel[0]) > 0:
         h, w = frame.shape[:2]
         self.current_face = (faces_rel[0][0] * [w, h, w, h]).astype(np.int64)
+      else:
+        self.current_face = None
+        self.current_roi_rust = None
       self.last_fdet_time = timestamp
     if self.current_face is None:
       return

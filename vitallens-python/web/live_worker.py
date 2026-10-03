@@ -20,13 +20,17 @@ from vitallens import VitalLens
 
 OUTPUT_LOCK = threading.Lock()
 UPDATE_LOCK = threading.Lock()
-latest_update = {
-    "faceDetected": False,
-    "heartRate": None,
-    "respiratoryRate": None,
-    "hrvSdnn": None,
-    "hrvRmssd": None,
-}
+def empty_update():
+    return {
+        "faceDetected": False,
+        "heartRate": None,
+        "respiratoryRate": None,
+        "hrvSdnn": None,
+        "hrvRmssd": None,
+    }
+
+
+latest_update = empty_update()
 
 
 def emit(payload):
@@ -86,11 +90,14 @@ def main():
     try:
         client = VitalLens(method="vitallens", api_key=api_key)
         client.rppg.fps_target = 8.0
+        session = None
 
         def on_result(results):
             if not results:
                 return
             update = make_update(results[0])
+            if session is None or session.current_face is None or not update["faceDetected"]:
+                update = empty_update()
             with UPDATE_LOCK:
                 latest_update.update(update)
             emit({"type": "result", "update": update})
@@ -162,9 +169,14 @@ def main():
                 )
                 continue
 
+            face_detected = session.current_face is not None
             with UPDATE_LOCK:
-                update = dict(latest_update)
-            update["faceDetected"] = session.current_face is not None or update["faceDetected"]
+                if face_detected:
+                    update = dict(latest_update)
+                else:
+                    update = empty_update()
+                    latest_update.update(update)
+            update["faceDetected"] = face_detected
             emit({"type": "frame", "requestId": request_id, "update": update})
     finally:
         session.close()

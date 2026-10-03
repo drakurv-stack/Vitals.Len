@@ -12,11 +12,12 @@ import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 const queryClient = new QueryClient();
 type Phase = 'idle' | 'camera' | 'starting' | 'no-face' | 'calibrating' | 'live' | 'stopping' | 'denied' | 'error';
 
-function Metric({ label, symbol, metric, precision = 0 }: {
+function Metric({ label, symbol, metric, precision = 0, emptyLabel = 'WAITING' }: {
   label: string;
   symbol: string;
   metric: LiveInferenceUpdate[keyof Pick<LiveInferenceUpdate, 'heartRate' | 'respiratoryRate' | 'hrvSdnn' | 'hrvRmssd'>];
   precision?: number;
+  emptyLabel?: string;
 }) {
   const isAvailable = Boolean(metric);
   const confidence = metric ? (metric.confidence <= 1 ? metric.confidence * 100 : metric.confidence) : 0;
@@ -24,7 +25,7 @@ function Metric({ label, symbol, metric, precision = 0 }: {
     <article className={`metric-card ${isAvailable ? 'metric-active' : ''}`} data-testid={`metric-${label.toLowerCase().replace(/\s+/g, '-')}`}>
       <div className="metric-top">
         <span className="metric-symbol">{symbol}</span>
-        {isAvailable ? <span className="metric-confidence"><span />{Math.round(confidence)}% signal</span> : <span className="metric-awaiting">WAITING</span>}
+        {isAvailable ? <span className="metric-confidence"><span />{Math.round(confidence)}% signal</span> : <span className="metric-awaiting">{emptyLabel}</span>}
       </div>
       <div className="metric-value">
         {metric ? metric.value.toFixed(precision) : <span className="metric-dash">—</span>}
@@ -127,8 +128,13 @@ function AppHome() {
           data: { jpegBase64, timestamp: (performance.now() - startedAtRef.current) / 1000 },
         });
         if (!cancelled) {
-          setInference(result);
-          setPhase(!result.faceDetected ? 'no-face' : result.heartRate || result.respiratoryRate ? 'live' : 'calibrating');
+          if (!result.faceDetected) {
+            setInference(null);
+            setPhase('no-face');
+          } else {
+            setInference(result);
+            setPhase(result.heartRate || result.respiratoryRate ? 'live' : 'calibrating');
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -207,6 +213,8 @@ function AppHome() {
       phase === 'live' ? 'Live estimates' : phase === 'stopping' ? 'Stopping stream' :
         phase === 'denied' ? 'Permission needed' : phase === 'error' ? 'Needs attention' : 'Ready when you are';
   const elapsedLabel = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+  const visibleInference = phase === 'no-face' || !inference?.faceDetected ? null : inference;
+  const emptyMetricLabel = phase === 'no-face' ? 'NO FACE' : 'WAITING';
 
   return (
     <main className="page-shell grain min-h-[100dvh]">
@@ -296,14 +304,15 @@ function AppHome() {
         <aside className="readout-column">
           <div className="readout-header">
             <div className="section-kicker"><span>02</span> LIVE READOUT <span className="kicker-line" /></div>
-            <div className={`readout-status ${isRunning ? 'readout-on' : ''}`}><span />{phase === 'live' ? 'READING' : isRunning ? 'WARMING UP' : 'IDLE'}</div>
+            <div className={`readout-status ${phase === 'no-face' ? 'readout-warning' : isRunning ? 'readout-on' : ''}`}><span />{phase === 'no-face' ? 'NO FACE' : phase === 'live' ? 'READING' : isRunning ? 'WARMING UP' : 'IDLE'}</div>
           </div>
           <div className="metric-grid">
-            <Metric label="Heart rate" symbol="HR" metric={inference?.heartRate ?? null} />
-            <Metric label="Respiratory rate" symbol="RR" metric={inference?.respiratoryRate ?? null} />
-            <Metric label="HRV · SDNN" symbol="SDNN" metric={inference?.hrvSdnn ?? null} precision={1} />
-            <Metric label="HRV · RMSSD" symbol="RMSSD" metric={inference?.hrvRmssd ?? null} precision={1} />
+            <Metric label="Heart rate" symbol="HR" metric={visibleInference?.heartRate ?? null} emptyLabel={emptyMetricLabel} />
+            <Metric label="Respiratory rate" symbol="RR" metric={visibleInference?.respiratoryRate ?? null} emptyLabel={emptyMetricLabel} />
+            <Metric label="HRV · SDNN" symbol="SDNN" metric={visibleInference?.hrvSdnn ?? null} precision={1} emptyLabel={emptyMetricLabel} />
+            <Metric label="HRV · RMSSD" symbol="RMSSD" metric={visibleInference?.hrvRmssd ?? null} precision={1} emptyLabel={emptyMetricLabel} />
           </div>
+          <div className="metric-note" role="note"><Info size={13} /><span>HRV (SDNN and RMSSD) measures beat-to-beat timing variation, needs at least 20 seconds of clean signal, and may require a VitalLens plan that supports HRV.</span></div>
           <SignalTrace active={isRunning && phase === 'live'} />
 
           <div className={`guidance-panel ${phase === 'no-face' ? 'guidance-warn' : phase === 'live' ? 'guidance-live' : ''}`}>
@@ -312,7 +321,7 @@ function AppHome() {
             </div>
             <div className="guidance-copy">
               <span className="guidance-label">{phase === 'no-face' ? 'FACE NOT DETECTED' : phase === 'live' ? 'SIGNAL ACQUIRED' : phase === 'error' ? 'SESSION INTERRUPTED' : 'WHAT TO EXPECT'}</span>
-              <p>{phase === 'no-face' ? 'Center your face inside the guide and face a steady light source.' : phase === 'live' ? 'Pulse estimates can take several seconds to update. Hold still in steady light; vigorous movement can make camera readings unreliable.' : phase === 'error' ? 'The stream stopped safely. Check your connection and start a new session when ready.' : 'Center your whole face inside the guide, use steady lighting, and hold still for a few seconds while the signal calibrates.'}</p>
+              <p>{phase === 'no-face' ? 'No face is tracked, so live values are hidden. Center your face inside the guide and face a steady light source.' : phase === 'live' ? 'Pulse estimates can take several seconds to update. Hold still in steady light; vigorous movement can make camera readings unreliable.' : phase === 'error' ? 'The stream stopped safely. Check your connection and start a new session when ready.' : 'Center your whole face inside the guide, use steady lighting, and hold still for a few seconds while the signal calibrates.'}</p>
             </div>
           </div>
 

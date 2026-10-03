@@ -283,7 +283,10 @@
 .readout-status { display:flex; align-items:center; gap:6px; color:#87918a; font:9px var(--app-font-mono); letter-spacing:.09em; }
 .readout-status > span { width:6px; height:6px; border-radius:50%; background:#c4c6bb; }
 .readout-on { color:#bd6348; }.readout-on > span { background:#d66d52; animation:signal-pulse 1.6s infinite; }
+.readout-warning { color:#a7634c; }.readout-warning > span { background:#dca184; }
 .metric-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:17px; }
+.metric-note { display:flex; align-items:flex-start; gap:7px; margin:9px 1px 0; color:#879187; font-size:10px; line-height:1.45; }
+.metric-note svg { flex:none; margin-top:1px; color:#919b8e; }
 .metric-card { position:relative; min-height:126px; padding:13px 15px 12px; border:1px solid #e9e5db; border-radius:7px; background:#f8f7f1; transition:border-color .25s,background .25s; }
 .metric-card.metric-active { border-color:#c8d4c6; background:#f5f7ef; }
 .metric-top { display:flex; align-items:center; justify-content:space-between; }

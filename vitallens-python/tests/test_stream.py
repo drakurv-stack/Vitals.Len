@@ -25,6 +25,13 @@ class DummyStreamRPPG(SimpleRPPGMethod):
   def pulse_filter(self, sig: np.ndarray, fps: float) -> np.ndarray:
     return sig
 
+class DummyFaceDetector:
+  def __init__(self, detections):
+    self.detections = iter(detections)
+
+  def __call__(self, **kwargs):
+    return next(self.detections), None
+
 def test_frame_buffer():
   roi = vc.Rect(x=0.0, y=0.0, width=10.0, height=10.0)
   buf = FrameBuffer(buffer_id="test_id", roi=roi, max_capacity=5, timestamp=1.0)
@@ -75,3 +82,20 @@ def test_stream_session():
     assert 'vitals' in res[0]
     assert 'waveforms' in res[0]
     assert 'ppg_waveform' in res[0]['waveforms']
+
+def test_lost_face_clears_face_and_roi():
+  detector = DummyFaceDetector([
+    np.array([[[0.1, 0.1, 0.4, 0.4]]], dtype=np.float32),
+    np.empty((1, 0, 4), dtype=np.float32),
+  ])
+  rppg = DummyStreamRPPG()
+  frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+  with StreamSession(rppg_method=rppg, face_detector=detector, fdet_fs=1.0) as session:
+    session.push(frame, timestamp=0.0)
+    assert session.current_face is not None
+    assert session.current_roi_rust is not None
+
+    session.push(frame, timestamp=1.0)
+    assert session.current_face is None
+    assert session.current_roi_rust is None
