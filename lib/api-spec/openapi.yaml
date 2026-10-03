@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: live-demo
+    description: Live camera demo operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,98 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /live/status:
+    get:
+      operationId: getLiveDemoStatus
+      tags: [live-demo]
+      summary: Check whether live inference is configured
+      responses:
+        "200":
+          description: Live demo readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveDemoStatus"
+  /live/sessions:
+    post:
+      operationId: startLiveSession
+      tags: [live-demo]
+      summary: Start a live VitalLens stream
+      responses:
+        "201":
+          description: Stream started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveSession"
+        "503":
+          description: Inference is not configured or available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many active live sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /live/sessions/{sessionId}/frames:
+    post:
+      operationId: pushLiveFrame
+      tags: [live-demo]
+      summary: Send a camera frame for live analysis
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiveFrameInput"
+      responses:
+        "200":
+          description: Latest available inference update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveInferenceUpdate"
+        "400":
+          description: Invalid camera frame
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Live session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /live/sessions/{sessionId}:
+    delete:
+      operationId: stopLiveSession
+      tags: [live-demo]
+      summary: Stop and release a live VitalLens stream
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Stream stopped
+        "404":
+          description: Live session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +127,67 @@ components:
           type: string
       required:
         - status
+    LiveDemoStatus:
+      type: object
+      properties:
+        apiReady:
+          type: boolean
+        message:
+          type: string
+      required: [apiReady, message]
+    LiveSession:
+      type: object
+      properties:
+        sessionId:
+          type: string
+      required: [sessionId]
+    LiveFrameInput:
+      type: object
+      properties:
+        jpegBase64:
+          type: string
+          description: Base64-encoded JPEG camera frame, without a data URL prefix
+          maxLength: 150000
+        timestamp:
+          type: number
+          description: Monotonic time in seconds since the stream started
+      required: [jpegBase64, timestamp]
+    VitalMetric:
+      type: object
+      properties:
+        value:
+          type: number
+        unit:
+          type: string
+        confidence:
+          type: number
+      required: [value, unit, confidence]
+    LiveInferenceUpdate:
+      type: object
+      properties:
+        faceDetected:
+          type: boolean
+        heartRate:
+          oneOf:
+            - $ref: "#/components/schemas/VitalMetric"
+            - type: "null"
+        respiratoryRate:
+          oneOf:
+            - $ref: "#/components/schemas/VitalMetric"
+            - type: "null"
+        hrvSdnn:
+          oneOf:
+            - $ref: "#/components/schemas/VitalMetric"
+            - type: "null"
+        hrvRmssd:
+          oneOf:
+            - $ref: "#/components/schemas/VitalMetric"
+            - type: "null"
+      required: [faceDetected, heartRate, respiratoryRate, hrvSdnn, hrvRmssd]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

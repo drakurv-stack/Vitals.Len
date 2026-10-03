@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "VitalLens Live"
+description = "A browser-based live camera demo for VitalLens. Streams consented camera frames to the server for live vital-sign estimates without saving video."
+version = "1.0.0"
+id = "artifacts/vitallens-live"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23579
+
+[services.development]
+run = "pnpm --filter @workspace/vitallens-live run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vitallens-live", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/vitallens-live/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23579"
+BASE_PATH = "/"

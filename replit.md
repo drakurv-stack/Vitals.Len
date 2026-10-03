@@ -1,20 +1,22 @@
-# [Project name]
+# VitalLens Live
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A browser camera demo for the imported VitalLens Python library. It sends compressed still frames to the server only during a user-started session and displays live vital-sign estimates returned by the VitalLens API.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Start the `artifacts/vitallens-live: web` workflow for the camera demo.
+- Start the `artifacts/api-server: API Server` workflow for the live inference endpoints.
+- `uv sync --python 3.13` — install the Python runtime dependencies used by the VitalLens worker.
+- `pnpm run typecheck` — typecheck workspace libraries and artifacts.
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec.
+- Required Replit Secret: `VITALLENS_API_KEY` — a VitalLens API key. Keep it in Replit Secrets; do not place it in source code.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- pnpm workspaces, Node.js 20, TypeScript 5.9
+- Web: React + Vite
+- Inference API: Express 5 with a transient Python worker
+- VitalLens: Python 3.13
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
@@ -22,23 +24,30 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/vitallens-live` — browser camera demo
+- `artifacts/api-server/src/routes/live-demo.ts` — live inference API and worker lifecycle
+- `vitallens-python/web/live_worker.py` — persistent Python stream worker
+- `lib/api-spec/openapi.yaml` — API contract
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Camera frames are sent only while the user has started a session; the app does not save the video.
+- The VitalLens API key stays server-side.
+- Live sessions are transient and limited to one active stream at a time.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The live demo displays camera status, face detection, calibration, heart rate, respiratory rate, and available HRV estimates.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The estimates are for wellness exploration only and must not be presented as medical advice or diagnosis.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run the API server and web artifact workflows together.
+- The browser must grant camera access; use the secure Replit preview URL.
+- Use the Python 3.13 environment for the VitalLens worker.
 
 ## Pointers
 
