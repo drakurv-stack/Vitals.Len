@@ -97,6 +97,27 @@ video_arr = np.array(frames)
 results = vl(video_arr, fps=fps)
 ```
 
+### Live Webcam Demo (Local Computer)
+
+`examples/live.py` opens a webcam on the computer running Python. It cannot access a camera connected to a remote Replit workspace.
+
+From the `vitallens-python` project directory, install the optional webcam dependency and start the local-only POS demo:
+
+```bash
+python -m pip install -e ".[live]"
+python examples/live.py --method pos --camera 0
+```
+
+Press `q` in the camera window to quit. If you have multiple cameras, try `--camera 1`.
+
+To use the VitalLens API instead, make `VITALLENS_API_KEY` available in your computer's local environment, then run:
+
+```bash
+python examples/live.py --method vitallens --camera 0
+```
+
+Replit Secrets are not available to Python running on your own computer. The API-backed mode sends camera frames to VitalLens for processing; use `--method pos` for local-only processing.
+
 ### Real-time Streaming
 
 For live feeds or webcams. There are two ways to handle results:

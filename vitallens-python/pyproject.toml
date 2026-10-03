@@ -35,6 +35,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = ["pytest", "flake8"]
+live = ["opencv-python>=4.8"]
 
 [project.urls]
 Repository = "https://github.com/Rouast-Labs/vitallens-python.git"

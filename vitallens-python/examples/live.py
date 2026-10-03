@@ -2,6 +2,7 @@ import argparse
 from collections import deque
 import cv2
 import numpy as np
+import os
 import time
 from vitallens import VitalLens
 import vitallens_core as vc
@@ -33,22 +34,26 @@ def draw_waveform(frame, data, color, rect, title):
 def main():
   parser = argparse.ArgumentParser(description="VitalLens Live Webcam Demo")
   parser.add_argument('--method', type=str, default='pos', help='Method to use (e.g., pos, chrom, g, vitallens)')
-  parser.add_argument('--api_key', type=str, default=None, help='API key (required for vitallens method)')
+  parser.add_argument('--api_key', type=str, default=os.environ.get('VITALLENS_API_KEY'), help='API key (defaults to VITALLENS_API_KEY)')
+  parser.add_argument('--camera', type=int, default=0, help='Camera device index (default: 0)')
   args = parser.parse_args()
 
   vl = VitalLens(method=args.method, api_key=args.api_key)
   vl.rppg.fps_target = 15.0
 
-  cap = cv2.VideoCapture(0)
+  cap = cv2.VideoCapture(args.camera)
   if not cap.isOpened():
-    print("Error: Could not open webcam.")
+    cap.release()
+    print(f"Error: Could not open camera {args.camera}. Check camera permissions or try another --camera index.")
     return
 
-  print(f"Starting live stream using {args.method}. Press 'q' to quit.")
+  print(f"Starting live stream using {args.method} on camera {args.camera}. Press 'q' to quit.")
 
   font = cv2.FONT_HERSHEY_SIMPLEX
   latest_vitals = {}
   latest_coords = None
+  frame_times = deque(maxlen=30)
+  fps_display = 0.0
   ppg_history = deque(maxlen=150)
   ppg_conf = deque(maxlen=150)
   resp_history = deque(maxlen=150)
@@ -69,6 +74,12 @@ def main():
       ret, frame = cap.read()
       if not ret:
         break
+
+      frame_times.append(time.perf_counter())
+      if len(frame_times) > 1:
+        elapsed = frame_times[-1] - frame_times[0]
+        if elapsed > 0:
+          fps_display = (len(frame_times) - 1) / elapsed
 
       timestamp = time.time() - start_time
       rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -114,6 +125,7 @@ def main():
       cv2.rectangle(frame, (0, 0), (fw, 55), (30, 30, 30), -1)
       cv2.putText(frame, state_text, (20, 25), font, 0.7, color, 2)
       cv2.putText(frame, msg_text, (20, 45), font, 0.5, (200, 200, 200), 1)
+      cv2.putText(frame, f"{fps_display:.2f} fps", (max(10, fw - 150), 30), font, 0.55, (80, 220, 120), 2)
 
       if session.current_face is not None:
         x1, y1, x2, y2 = map(int, session.current_face)
