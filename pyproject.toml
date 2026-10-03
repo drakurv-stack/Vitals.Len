@@ -1,0 +1,17 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=1.24",
+    "onnxruntime>=1.15.0",
+    "pandas>=3.0.6",
+    "prpy[ffmpeg,numpy-min]>=0.3.13",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0.1",
+    "requests>=2.32.0",
+    "standard-imghdr>=3.13.0",
+    "vitallens-core==0.2.5",
+]

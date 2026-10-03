@@ -1,0 +1,289 @@
+# Copyright (c) 2026 Rouast Labs
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+from datetime import datetime
+import json
+import logging
+import numpy as np
+import os
+from prpy.numpy.image import probe_image_inputs
+from typing import Union, Callable
+import vitallens_core as vc
+
+from vitallens.enums import Method
+from vitallens.methods.g import GRPPGMethod
+from vitallens.methods.chrom import CHROMRPPGMethod
+from vitallens.methods.pos import POSRPPGMethod
+from vitallens.methods.vitallens import VitalLensRPPGMethod
+from vitallens.ssd import FaceDetector
+from vitallens.stream import StreamSession
+from vitallens.utils import check_faces, convert_ndarray_to_list
+
+logging.getLogger().setLevel("INFO")
+
+class VitalLens:
+  def __init__(
+      self, 
+      method: Union[Method, str] = "vitallens",
+      api_key: str = None,
+      proxies: dict = None,
+      detect_faces: bool = True,
+      estimate_rolling_vitals: bool = True,
+      fdet_max_faces: int = 1,
+      fdet_fs: float = 1.0,
+      fdet_score_threshold: float = 0.9,
+      fdet_iou_threshold: float = 0.3,
+      export_to_json: bool = True,
+      export_dir: str = ".",
+      mode=None # Deprecated
+    ):
+    """Initialises the client. Loads face detection model if necessary.
+
+    You can choose from several rPPG `method`:
+
+      * `vitallens`: Recommended. Uses the VitalLens API and automatically selects the best model for your API key.
+      * `vitallens-2.0`: Force the use of the VitalLens 2.0 model.
+      * `vitallens-1.0`: Force the use of the VitalLens 1.0 model.
+      * `vitallens-1.1`: Force the use of the VitalLens 1.1 model.
+      * `pos`, `chrom`, `g`: Classic rPPG algorithms that run locally and do not require an API key.
+
+    Args:
+      method: The rPPG method to be used for inference.
+      api_key: Usage key for the VitalLens API (required for vitallens methods, unless using proxy)
+      proxies: Dictionary mapping protocol to the URL of the proxy.
+      detect_faces: `True` if faces need to be detected, otherwise `False`.
+      estimate_rolling_vitals: Set `True` to compute rolling vitals (e.g., `rolling_heart_rate`).
+      fdet_max_faces: The maximum number of faces to detect (if necessary).
+      fdet_fs: Frequency [Hz] at which faces should be scanned. Detections are
+        linearly interpolated for remaining frames.
+      fdet_score_threshold: Face detection score threshold.
+      fdet_iou_threshold: Face detection iou threshold.
+      export_to_json: If `True`, write results to a json file.
+      export_dir: The directory to which json files are written.
+    """
+    if mode is not None:
+      logging.warning("The 'mode' argument is deprecated. Use vl(video) for batch and vl.stream() for live streams.")
+    
+    if isinstance(method, Method):
+      self.method_name = method.value
+    else:
+      self.method_name = str(method)
+
+    if self.method_name.startswith("vitallens"):
+      self.rppg = VitalLensRPPGMethod(
+        api_key=api_key,
+        requested_model_name=self.method_name,
+        proxies=proxies
+      )
+    elif self.method_name == "g":
+      self.rppg = GRPPGMethod()
+    elif self.method_name == "chrom":
+      self.rppg = CHROMRPPGMethod()
+    elif self.method_name == "pos":
+      self.rppg = POSRPPGMethod()
+    else:
+      raise ValueError(f"Unknown method or model: {self.method_name}")
+
+    self.detect_faces = detect_faces
+    self.estimate_rolling_vitals = estimate_rolling_vitals
+    self.export_to_json = export_to_json
+    self.export_dir = export_dir
+    self.fdet_fs = fdet_fs
+
+    if detect_faces:
+      self.face_detector = FaceDetector(
+        max_faces=fdet_max_faces, fs=fdet_fs, score_threshold=fdet_score_threshold,
+        iou_threshold=fdet_iou_threshold)
+
+  def __call__(
+      self,
+      video: Union[np.ndarray, str],
+      faces: Union[np.ndarray, list] = None,
+      fps: float = None,
+      override_fps_target: float = None,
+      override_global_parse: bool = None,
+      export_filename: str = None
+    ) -> list:
+    """Runs rPPG inference from a video file or in-memory video data.
+
+    Args:
+      video: The video to analyze. Either a np.ndarray of shape (n_frames, h, w, 3)
+        with a sequence of frames in unscaled uint8 RGB format, or a path to a
+        video file. Note that aggressive video encoding destroys the rPPG signal.
+      faces: Face boxes in flat point form, containing [x0, y0, x1, y1] coords.
+        Ignored unless detect_faces=False. Pass a list or np.ndarray of
+        - shape (n_faces, n_frames, 4) for multiple faces detected on multiple frames,
+        - shape (n_frames, 4) for single face detected on mulitple frames, or
+        - shape (4,) for a single face detected globally, or
+        - `None` to assume all frames already cropped to the same single face detection.
+      fps: Sampling frequency of the input video. Required if type(video) == np.ndarray. 
+      override_fps_target: Target fps at which rPPG inference should be run (optional).
+        If not provided, will use default of the selected method.
+      override_global_parse: If True, always use global parse. If False, don't use global parse.
+        If None, choose based on video.
+      export_filename: Filename for json export if applicable.
+    Returns:
+      result: Analysis results as a list of faces in the following format:
+
+        [
+          {
+            'face': {
+              'coordinates': [[247, 52, 444, 332], ...],
+              'confidence': [0.6115, 0.9207, 0.9183, ...],
+              'note': "Face detection coordinates..."
+            },
+            'vitals': {
+              'heart_rate': {
+                'value': 60.5,
+                'unit': 'bpm',
+                'confidence': 0.9242,
+                'note': 'Global estimate of heart rate...'
+              },
+              <other vitals...>
+            },
+            'waveforms': {
+              'ppg_waveform': {
+                'data': [0.1, 0.2, ...],
+                'unit': 'unitless',
+                'confidence': [0.9, 0.9, ...],
+                'note': '...'
+              },
+              <other waveforms...>
+            },
+            'message': <Message about estimates>
+          },
+          { 
+            <same structure for face 2 if present>
+          },
+          ...
+        ]
+    """
+    # Probe inputs
+    inputs_shape, fps, _ = probe_image_inputs(video, fps=fps, allow_image=False)
+    # Warning if using long video with simple rPPG method
+    target_fps = override_fps_target if override_fps_target is not None else self.rppg.fps_target
+    if not isinstance(self.rppg, VitalLensRPPGMethod) and (inputs_shape[0] / fps * target_fps) > 3600:
+      logging.warning("Inference for long videos has yet to be optimized for POS / G / CHROM. This may consume significant memory.")
+    _, height, width, _ = inputs_shape
+    if self.detect_faces:
+      # Detect faces
+      faces_rel, _ = self.face_detector(inputs=video, n_frames=inputs_shape[0], fps=fps)
+      # If no faces detected: return empty list
+      if len(faces_rel) == 0:
+        logging.warning("No faces detected to in the video")
+        return []
+      # Convert to absolute units
+      faces = (faces_rel * [width, height, width, height]).astype(np.int64)
+      # Face axis first
+      faces = np.transpose(faces, (1, 0, 2))
+    # Check if the faces are valid
+    faces = check_faces(faces, inputs_shape)
+    # Run separately for each face
+    results = []
+    for face in faces:
+      sig, conf, live = self.rppg.infer_batch(
+        inputs=video,
+        faces=face,
+        fps=fps,
+        override_fps_target=override_fps_target,
+        override_global_parse=override_global_parse
+      )
+      live = np.round(live, 4)
+
+      self.rppg.session_config.estimate_rolling_vitals = self.estimate_rolling_vitals
+      session = vc.Session(self.rppg.session_config)
+      signals_input = {k: vc.SignalInput(data=v.tolist(), confidence=conf[k].tolist()) for k, v in sig.items()}
+      face_input = vc.FaceInput(coordinates=face.tolist(), confidence=live.tolist())
+      timestamps = (np.arange(inputs_shape[0]) / fps).tolist()
+      session_input = vc.SessionInput(face=face_input, signals=signals_input, timestamp=timestamps)
+      session_result = session.process(session_input, "Global")
+
+      face_result = {
+        'face': {
+          'coordinates': session_result.face.coordinates if session_result.face else face.tolist(),
+          'confidence': session_result.face.confidence if session_result.face else live.tolist(),
+          'note': session_result.face.note if session_result.face and session_result.face.note else "Face detection coordinates for this face with live confidence levels."
+        },
+        'vitals': {
+            k: {'value': v.value, 'unit': v.unit, 'confidence': v.confidence, 'note': v.note}
+            for k, v in session_result.vitals.items()
+        },
+        'waveforms': {
+            k: {'data': v.data, 'unit': v.unit, 'confidence': v.confidence, 'note': v.note}
+            for k, v in session_result.waveforms.items()
+        },
+        'rolling_vitals': {
+            k: {'data': v.data, 'unit': v.unit, 'confidence': v.confidence, 'note': v.note}
+            for k, v in session_result.rolling_vitals.items()
+        } if session_result.rolling_vitals else {},
+        'message': session_result.message,
+        'fps': session_result.fps,
+        'n': len(session_result.timestamp),
+        'time': session_result.timestamp
+      }
+
+      results.append(face_result)
+
+    # Export to json
+    if self.export_to_json:
+      os.makedirs(self.export_dir, exist_ok=True)
+      export_filename = f"{export_filename}.json" if export_filename is not None else f"vitallens_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+      with open(os.path.join(self.export_dir, export_filename), 'w') as f:
+        json.dump(convert_ndarray_to_list(results), f, indent=4)
+    return results
+  
+  def stream(self, on_result: Callable = None) -> StreamSession:
+    """Returns a context manager for real-time vital sign estimation.
+
+    This method creates a `StreamSession` that manages background inference threads,
+    sliding window buffers, and signal state via `vitallens-core`. It is designed 
+    for low-latency applications like webcam feeds.
+
+    Usage:
+      ```python
+      with vl.stream() as session:
+          session.push(frame, timestamp)
+          results = session.get_result(block=False)
+      ```
+
+    Args:
+      on_result: An optional callback function triggered automatically whenever 
+        new inference results are available. The function should accept one 
+        argument (the results list).
+
+    Returns:
+      session: A `StreamSession` context manager. The session object provides:
+        * `push(frame, timestamp, face=None)`: Ingests a new RGB frame. 
+          `timestamp` should be in seconds (e.g., `time.time()`).
+        * `get_result(block=False, timeout=None)`: Pulls the latest analysis 
+          results from the queue.
+        * `current_face`: The most recently detected face coordinates.
+
+    Note:
+      The results returned by `get_result()` or the callback follow the same 
+      format as `__call__`, but represent the physiological state of the 
+      current sliding window rather than a global file average.
+    """
+    return StreamSession(
+      rppg_method=self.rppg,
+      face_detector=self.face_detector if self.detect_faces else None,
+      fdet_fs=self.fdet_fs,
+      on_result=on_result
+    )

@@ -1,0 +1,49 @@
+# Copyright (c) 2026 Rouast Labs
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+# API settings
+API_MIN_FRAMES = 16
+API_MAX_FRAMES = 900
+API_OVERLAP = 30
+API_FILE_URL = "https://api.rouast.com/vitallens-v3/file"
+if 'API_FILE_URL' in os.environ:
+  API_FILE_URL = os.getenv('API_FILE_URL')
+API_STREAM_URL = "https://api.rouast.com/vitallens-v3/stream"
+if 'API_STREAM_URL' in os.environ:
+  API_STREAM_URL = os.getenv('API_STREAM_URL')
+API_RESOLVE_URL = "https://api.rouast.com/vitallens-v3/resolve-model"
+if 'API_RESOLVE_URL' in os.environ:
+  API_RESOLVE_URL = os.getenv('API_RESOLVE_URL')
+
+# For local development against dev endpoints, create a `.env` file in the root
+# of the project and set the variables, for example:
+# API_FILE_URL="https://api-dev.rouast.com/vitallens-dev/file"
+# API_STREAM_URL="https://api-dev.rouast.com/vitallens-dev/stream"
+# API_RESOLVE_URL="https://api-dev.rouast.com/vitallens-dev/resolve-model"
+
+# Video error message
+VIDEO_PARSE_ERROR = "Unable to parse input video. There may be an issue with the video file."
+
+# Disclaimer message
+DISCLAIMER = "The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes."

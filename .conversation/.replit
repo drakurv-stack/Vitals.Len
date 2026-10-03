@@ -1,0 +1,5 @@
+modules = ["python-3.12"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "libyaml", "oneDNN", "pkg-config", "qhull", "re2", "tcl", "tk"]

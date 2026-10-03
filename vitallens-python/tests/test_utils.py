@@ -1,0 +1,142 @@
+import numpy as np
+from prpy.numpy.image import parse_image_inputs, probe_image_inputs
+import pytest
+
+import sys
+sys.path.append('../vitallens-python')
+
+from vitallens.utils import merge_faces, check_faces, check_faces_in_roi
+
+@pytest.mark.parametrize("file", [True, False])
+def test_probe_video_inputs(request, file):
+  if file:
+    test_video_path = request.getfixturevalue('test_video_path')
+    video_shape, fps, i = probe_image_inputs(test_video_path)
+  else:
+    test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+    test_video_fps = request.getfixturevalue('test_video_fps')
+    video_shape, fps, i = probe_image_inputs(test_video_ndarray, fps=test_video_fps)
+  assert video_shape == (630, 480, 768, 3)
+  assert fps == 30
+  assert i == False
+
+def test_probe_video_inputs_no_file():
+  with pytest.raises(Exception):
+    _ = probe_image_inputs("does_not_exist", fps="fps")
+
+def test_probe_video_inputs_wrong_fps(request):
+  with pytest.raises(Exception):
+    test_video_path = request.getfixturevalue('test_video_path')
+    _ = probe_image_inputs(test_video_path, fps="fps")
+
+def test_probe_video_inputs_no_fps(request):
+  test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+  with pytest.raises(Exception):
+    _ = probe_image_inputs(test_video_ndarray)
+
+def test_probe_video_inputs_wrong_dtype(request):
+  test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+  with pytest.raises(Exception):
+    _ = probe_image_inputs(test_video_ndarray.astype(np.float32), fps=30.)
+
+def test_probe_video_inputs_wrong_shape_1(request):
+  test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+  with pytest.raises(Exception):
+    _ = probe_image_inputs(test_video_ndarray[np.newaxis], fps=30.)
+
+def test_probe_video_inputs_wrong_shape_2(request):
+  test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+  with pytest.raises(Exception):
+    _ = probe_image_inputs(test_video_ndarray[...,0:1], fps=30.)
+
+def test_probe_video_inputs_wrong_type():
+  with pytest.raises(Exception):
+    _ = probe_image_inputs(12345, fps=30.)
+
+@pytest.mark.parametrize("file", [True, False])
+@pytest.mark.parametrize("roi", [None, (200, 0, 500, 350)])
+@pytest.mark.parametrize("target_size", [None, 200])
+@pytest.mark.parametrize("target_fps", [None, 15])
+def test_parse_video_inputs(request, file, roi, target_size, target_fps):
+  if file:
+    test_video_path = request.getfixturevalue('test_video_path')
+    parsed, fps_in, video_shape_in, ds_factor, idxs = parse_image_inputs(
+      inputs=test_video_path, roi=roi, target_size=target_size, target_fps=target_fps)
+  else:
+    test_video_ndarray = request.getfixturevalue('test_video_ndarray')
+    test_video_fps = request.getfixturevalue('test_video_fps')
+    parsed, fps_in, video_shape_in, ds_factor, idxs = parse_image_inputs(
+      inputs=test_video_ndarray, fps=test_video_fps, roi=roi, target_size=target_size,
+      target_fps=target_fps)
+  assert parsed.shape == (630 if target_fps is None else 630 // 2,
+                          200 if target_size is not None else (350 if roi is not None else 480),
+                          200 if target_size is not None else (300 if roi is not None else 768),
+                          3)
+  assert fps_in == 30
+  assert video_shape_in == (630, 480, 768, 3)
+  assert ds_factor == 1 if target_fps is None else 2
+  assert idxs == list(range(630)) if target_fps is None else list(range(0, 630, 2))
+
+def test_parse_video_inputs_no_file():
+  with pytest.raises(Exception):
+    _ = parse_image_inputs("does_not_exist")
+
+def test_parse_video_inputs_wrong_type():
+  with pytest.raises(Exception):
+    _ = parse_image_inputs(12345, fps=30.)
+
+def test_merge_faces():
+  np.testing.assert_equal(
+    merge_faces(np.asarray([[2, 4, 3, 7],
+                            [1, 3, 4, 6],
+                            [2, 4, 5, 7],
+                            [3, 5, 4, 8]])),
+    np.asarray([1, 3, 5, 8]))
+  
+@pytest.mark.parametrize("faces", [None, [[[3, 5, 4, 8], [3, 5, 4, 8]], [[3, 5, 4, 8], [2, 6, 4, 8]]], [[3, 5, 4, 8], [2, 6, 4, 8]], [3, 5, 4, 8]])
+@pytest.mark.parametrize("faces_list", [True, False])
+def test_check_faces(faces, faces_list):
+  if faces is None and not faces_list:
+    pytest.skip("Skip because parameter combination does not work")
+  if faces_list:
+    faces = check_faces(faces, inputs_shape=(2, 10, 10, 3))
+  else:
+    faces = check_faces(np.asarray(faces), inputs_shape=(2, 10, 10, 3))
+  assert isinstance(faces, np.ndarray)
+  assert faces.ndim == 3
+  assert faces.shape[1] == 2
+  assert faces.shape[2] == 4
+
+def test_check_faces_not_flat_point_form():
+  with pytest.raises(Exception):
+    _ = check_faces([0, 0, 0, 0, 0], inputs_shape=(2, 10, 10, 3))
+
+def test_check_faces_n_frames_n_dets_not_matching_1():
+  with pytest.raises(Exception):
+    _ = check_faces([[3, 5, 4, 8]], inputs_shape=(2, 10, 10, 3))
+
+def test_check_faces_n_frames_n_dets_not_matching_2():
+  with pytest.raises(Exception):
+    _ = check_faces([[[3, 5, 4, 8], [3, 5, 4, 8], [3, 5, 4, 8]]], inputs_shape=(2, 10, 10, 3))
+
+def test_check_faces_invalid_dets():
+  with pytest.raises(Exception):
+    _ = check_faces([1, 3, 2, 2], inputs_shape=(2, 10, 10, 3))
+
+@pytest.mark.parametrize("scenario", [([[0.4, 0.4, 0.6, 0.6], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), True), # Fully in ROI
+                                      ([[0.2, 0.4, 0.6, 0.6], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), True), # Slightly out to left but ok
+                                      ([[0.0, 0.4, 0.4, 0.6], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), False), # Too much out to left
+                                      ([[0.5, 0.4, 0.9, 0.6], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.2, 0.5), True), # Slightly out to right but ok
+                                      ([[0.5, 0.4, 0.9, 0.6], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.6, 0.5), False), # Too much out to right
+                                      ([[0.4, 0.2, 0.6, 0.5], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), True), # Slightly out to top but ok
+                                      ([[0.4, 0.1, 0.6, 0.5], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.6), False), # Too much out to top
+                                      ([[0.4, 0.5, 0.6, 0.8], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), True), # Slightly out to bottom but ok
+                                      ([[0.4, 0.6, 0.6, 0.9], [0.4, 0.4, 0.6, 0.6]], [0.3, 0.3, 0.7, 0.7], (0.5, 0.5), False), # Too much out to bottom
+                                      ])
+def test_check_faces_in_roi(scenario):
+  faces = np.asarray(scenario[0])
+  roi = np.asarray(scenario[1])
+  percentage_required_inside_roi = scenario[2]
+  expected = scenario[3]
+  actual = check_faces_in_roi(faces=faces, roi=roi, percentage_required_inside_roi=percentage_required_inside_roi)
+  assert expected == actual

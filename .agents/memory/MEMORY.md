@@ -1,0 +1,1 @@
+- [Python toolchain selection](python-toolchain-selection.md) — confirm the interpreter chosen by `uv` before changing Python modules; module selection can point installs at a different runtime.
