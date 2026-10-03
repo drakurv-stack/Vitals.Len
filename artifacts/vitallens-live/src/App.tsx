@@ -251,10 +251,10 @@ function AppHome() {
               <div className="viewfinder"><i /><i /><i /><i /><div className="face-guide"><span /><span /></div></div>
               {(phase === 'no-face' || phase === 'calibrating' || phase === 'starting') && (
                 <div className="camera-hint">
-                  {phase === 'no-face' ? <><EyeOff size={15} /> Bring your face into the frame</> : phase === 'starting' ? <><LoaderCircle size={15} className="spin" /> Connecting to VitalLens</> : <><span className="signal-pulse"><Radio size={14} /></span> Hold still while the signal settles</>}
+                  {phase === 'no-face' ? <><EyeOff size={15} /> Center your face inside the guide</> : phase === 'starting' ? <><LoaderCircle size={15} className="spin" /> Connecting to VitalLens</> : <><span className="signal-pulse"><Radio size={14} /></span> Hold still while the signal settles</>}
                 </div>
               )}
-              <div className="camera-overlay-bottom"><span>640 × 480 · FRONT CAMERA</span><span><span className="cam-led" /> STREAMING TO SERVER</span></div>
+              <div className="camera-overlay-bottom"><span>CAMERA · FULL FRAME</span><span><span className="cam-led" /> STREAMING TO SERVER</span></div>
             </>}
             {phase === 'stopping' && <div className="camera-stopping"><LoaderCircle className="spin" size={20} /> Releasing camera session…</div>}
           </div>
@@ -312,7 +312,7 @@ function AppHome() {
             </div>
             <div className="guidance-copy">
               <span className="guidance-label">{phase === 'no-face' ? 'FACE NOT DETECTED' : phase === 'live' ? 'SIGNAL ACQUIRED' : phase === 'error' ? 'SESSION INTERRUPTED' : 'WHAT TO EXPECT'}</span>
-              <p>{phase === 'no-face' ? 'Move into the center of the frame and face a steady light source.' : phase === 'live' ? 'Estimates update as new frames are analyzed. Stay relaxed and keep still for a steadier signal.' : phase === 'error' ? 'The stream stopped safely. Check your connection and start a new session when ready.' : 'A face is needed to begin. Allow a few seconds for calibration before estimates appear.'}</p>
+              <p>{phase === 'no-face' ? 'Center your face inside the guide and face a steady light source.' : phase === 'live' ? 'Pulse estimates can take several seconds to update. Hold still in steady light; vigorous movement can make camera readings unreliable.' : phase === 'error' ? 'The stream stopped safely. Check your connection and start a new session when ready.' : 'Center your whole face inside the guide, use steady lighting, and hold still for a few seconds while the signal calibrates.'}</p>
             </div>
           </div>
 
