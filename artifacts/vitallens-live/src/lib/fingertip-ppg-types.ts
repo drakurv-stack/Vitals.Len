@@ -1,3 +1,5 @@
+import type { MeasurementReportData } from '../components/measurement-report';
+
 export type PpgModePhase = 'idle' | 'starting' | 'warming' | 'live' | 'error';
 
 export type PpgTorchStatus = 'idle' | 'checking' | 'on' | 'unsupported' | 'unavailable';
@@ -27,8 +29,10 @@ export interface PpgModeProps {
   samples: readonly PpgSample[];
   sampleCount: number;
   markers: readonly PpgBreathingMarker[];
+  report: MeasurementReportData | null;
   onStart: () => void;
   onStop: () => void;
+  onCloseReport: () => void;
   onMarkBreathing: (event: PpgBreathingEvent) => void;
   onExportCsv: () => void;
 }

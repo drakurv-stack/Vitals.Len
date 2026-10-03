@@ -3,6 +3,8 @@ import {
   estimatePpgHeartRate,
   type PpgEstimate,
 } from '../lib/fingertip-ppg-signal';
+import { createMeasurementReport, type MeasurementReportReading } from '../lib/measurement-report-data';
+import type { MeasurementReportData } from '../components/measurement-report';
 import type {
   PpgBreathingEvent,
   PpgBreathingMarker,
@@ -68,6 +70,7 @@ export function useFingertipPpg() {
   const [samples, setSamples] = useState<PpgSample[]>([]);
   const [sampleCount, setSampleCount] = useState(0);
   const [markers, setMarkers] = useState<PpgBreathingMarker[]>([]);
+  const [report, setReport] = useState<MeasurementReportData | null>(null);
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -85,6 +88,9 @@ export function useFingertipPpg() {
   const lastSampleAtRef = useRef(0);
   const latestGoodEstimateAtRef = useRef(0);
   const bpmHistoryRef = useRef<number[]>([]);
+  const reportReadingsRef = useRef<MeasurementReportReading[]>([]);
+  const reportSignalQualityRef = useRef<number[]>([]);
+  const lastReportReadingAtRef = useRef(Number.NEGATIVE_INFINITY);
 
   const videoRef = useCallback((node: HTMLVideoElement | null) => {
     videoElementRef.current = node;
@@ -153,12 +159,24 @@ export function useFingertipPpg() {
   const stop = useCallback(() => {
     runTokenRef.current += 1;
     publishFinalState();
+    if (startedAtRef.current > 0) {
+      const durationSeconds = (performance.now() - startedAtRef.current) / 1000;
+      setReport(createMeasurementReport({
+        source: 'fingertip',
+        durationSeconds,
+        sampleCount: recordingSamplesRef.current.length,
+        readings: reportReadingsRef.current,
+        signalQualityPercent: median(reportSignalQualityRef.current),
+      }));
+    }
     releaseCamera();
     setCameraActive(false);
     setPhase('idle');
     setErrorMessage(null);
     startedAtRef.current = 0;
   }, [publishFinalState, releaseCamera]);
+
+  const closeReport = useCallback(() => setReport(null), []);
 
   const start = useCallback(async () => {
     if (cameraActiveRef.current) return;
@@ -176,6 +194,7 @@ export function useFingertipPpg() {
     setSamples([]);
     setSampleCount(0);
     setMarkers([]);
+    setReport(null);
     startedAtRef.current = 0;
     recordingSamplesRef.current = [];
     signalWindowRef.current = [];
@@ -186,6 +205,9 @@ export function useFingertipPpg() {
     lastSampleAtRef.current = 0;
     latestGoodEstimateAtRef.current = 0;
     bpmHistoryRef.current = [];
+    reportReadingsRef.current = [];
+    reportSignalQualityRef.current = [];
+    lastReportReadingAtRef.current = Number.NEGATIVE_INFINITY;
 
     let stream: MediaStream | null = null;
     try {
@@ -358,6 +380,21 @@ export function useFingertipPpg() {
           setBpm(null);
           setPhase('warming');
         }
+        if (elapsed - lastReportReadingAtRef.current >= 1) {
+          if (estimate.quality !== null && Number.isFinite(estimate.quality)) {
+            reportSignalQualityRef.current.push(estimate.quality);
+          }
+          if (estimate.bpm !== null) {
+            reportReadingsRef.current.push({
+              elapsedSeconds: elapsed,
+              heartRate: { value: estimate.bpm, confidence: null, unit: 'bpm' },
+              respiratoryRate: null,
+              hrvSdnn: null,
+              hrvRmssd: null,
+            });
+          }
+          lastReportReadingAtRef.current = elapsed;
+        }
       }, PUBLISH_INTERVAL_MS);
 
       videoTrack.addEventListener('ended', () => {
@@ -450,8 +487,10 @@ export function useFingertipPpg() {
     samples,
     sampleCount,
     markers,
+    report,
     onStart: start,
     onStop: stop,
+    onCloseReport: closeReport,
     onMarkBreathing: markBreathing,
     onExportCsv: exportCsv,
   };

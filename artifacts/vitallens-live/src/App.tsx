@@ -5,9 +5,11 @@ import { useGetLiveDemoStatus, usePushLiveFrame, useStartLiveSession, useStopLiv
 import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FingertipPpgMode } from '@/components/fingertip-ppg-mode';
+import { MeasurementReport, type MeasurementReportData } from '@/components/measurement-report';
 import { StressCheck } from '@/components/stress-check';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { createMeasurementReport, type MeasurementReportReading } from '@/lib/measurement-report-data';
 import { useFingertipPpg } from '@/hooks/use-fingertip-ppg';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
@@ -61,6 +63,7 @@ function AppHome() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [inference, setInference] = useState<LiveInferenceUpdate | null>(null);
+  const [report, setReport] = useState<MeasurementReportData | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [errorText, setErrorText] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -70,10 +73,13 @@ function AppHome() {
   const streamRef = useRef<MediaStream | null>(null);
   const startedAtRef = useRef(0);
   const frameBusyRef = useRef(false);
+  const reportReadingsRef = useRef<MeasurementReportReading[]>([]);
+  const lastReportSequenceRef = useRef(0);
   const pushFrameRef = useRef(pushFrame.mutateAsync);
   pushFrameRef.current = pushFrame.mutateAsync;
   const stopMutateRef = useRef(stopSession.mutate);
   stopMutateRef.current = stopSession.mutate;
+  const closeReport = useCallback(() => setReport(null), []);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -103,8 +109,19 @@ function AppHome() {
         return;
       }
     }
+    const reportStartedAt = startedAtRef.current;
+    const durationSeconds = reportStartedAt > 0
+      ? (performance.now() - reportStartedAt) / 1000
+      : elapsed;
+    setReport(createMeasurementReport({
+      source: 'vitallens',
+      durationSeconds,
+      sampleCount: reportReadingsRef.current.length,
+      readings: reportReadingsRef.current,
+    }));
     setInference(null);
     setPhase('idle');
+    startedAtRef.current = 0;
   }, [stopCamera, stopSession]);
 
   useEffect(() => {
@@ -131,6 +148,28 @@ function AppHome() {
           data: { jpegBase64, timestamp: (performance.now() - startedAtRef.current) / 1000 },
         });
         if (!cancelled) {
+          if (
+            result.faceDetected &&
+            result.resultSequence > 0 &&
+            result.resultSequence > lastReportSequenceRef.current
+          ) {
+            reportReadingsRef.current.push({
+              elapsedSeconds: Math.max(0, (performance.now() - startedAtRef.current) / 1000),
+              heartRate: result.heartRate
+                ? { value: result.heartRate.value, confidence: result.heartRate.confidence, unit: result.heartRate.unit }
+                : null,
+              respiratoryRate: result.respiratoryRate
+                ? { value: result.respiratoryRate.value, confidence: result.respiratoryRate.confidence, unit: result.respiratoryRate.unit }
+                : null,
+              hrvSdnn: result.hrvSdnn
+                ? { value: result.hrvSdnn.value, confidence: result.hrvSdnn.confidence, unit: result.hrvSdnn.unit }
+                : null,
+              hrvRmssd: result.hrvRmssd
+                ? { value: result.hrvRmssd.value, confidence: result.hrvRmssd.confidence, unit: result.hrvRmssd.unit }
+                : null,
+            });
+            lastReportSequenceRef.current = result.resultSequence;
+          }
           if (!result.faceDetected) {
             setInference(null);
             setPhase('no-face');
@@ -174,8 +213,11 @@ function AppHome() {
   const begin = async () => {
     setErrorText('');
     setInference(null);
+    setReport(null);
     setElapsed(0);
     setPhase('camera');
+    reportReadingsRef.current = [];
+    lastReportSequenceRef.current = 0;
     let cameraStream: MediaStream;
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is unavailable here. Open this page in a secure browser context.');
@@ -361,6 +403,7 @@ function AppHome() {
         <span><span className="footer-dot" /> WELLNESS ONLY <span className="footer-sep">·</span> NOT MEDICAL ADVICE</span>
         <span>Frames are transient <span className="footer-sep">·</span> No video retained</span>
       </footer>
+      {report && <MeasurementReport report={report} onClose={closeReport} />}
     </main>
   );
 }

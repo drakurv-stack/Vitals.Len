@@ -1,1 +1,2 @@
 - [Python toolchain selection](python-toolchain-selection.md) — confirm the interpreter chosen by `uv` before changing Python modules; module selection can point installs at a different runtime.
+- [VitalLens report evidence](vitallens-report-evidence.md) — keep reports tied to one modality and only its measured session values; never imply unmeasured health or wellness scores.
