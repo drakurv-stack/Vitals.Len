@@ -10,11 +10,6 @@ export interface PpgVariabilityEstimate {
   rmssdMs: number | null;
   pnn50Percent: number | null;
   meanPpiMs: number | null;
-  modaMs: number | null;
-  amo50Percent: number | null;
-  mxDmnMs: number | null;
-  coefficientVariationPercent: number | null;
-  stressIndex: number | null;
   validBeatCount: number;
   windowSeconds: number;
 }
@@ -289,11 +284,6 @@ export function estimatePpgVariability(
     rmssdMs: null,
     pnn50Percent: null,
     meanPpiMs: null,
-    modaMs: null,
-    amo50Percent: null,
-    mxDmnMs: null,
-    coefficientVariationPercent: null,
-    stressIndex: null,
     validBeatCount: 0,
     windowSeconds: window.durationSeconds,
   };
@@ -327,22 +317,6 @@ export function estimatePpgVariability(
     (sum, interval) => sum + (interval - average) ** 2,
     0,
   ) / (intervalMs.length - 1);
-  const standardDeviation = Math.sqrt(variance);
-  const intervalHistogram = new Map<number, number>();
-  for (const interval of intervalMs) {
-    const bin = Math.floor(interval / 50);
-    intervalHistogram.set(bin, (intervalHistogram.get(bin) ?? 0) + 1);
-  }
-  const modalBin = [...intervalHistogram.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0] - right[0])[0];
-  if (!modalBin) return empty;
-  const modaMs = modalBin[0] * 50 + 25;
-  const amo50Percent = (modalBin[1] / intervalMs.length) * 100;
-  const mxDmnMs = Math.max(...intervalMs) - Math.min(...intervalMs);
-  const coefficientVariationPercent = (standardDeviation / average) * 100;
-  const stressIndex = mxDmnMs > 0 && modaMs > 0
-    ? (amo50Percent * 10_000) / (2 * modaMs * mxDmnMs)
-    : null;
   const consecutiveDifferences: number[] = [];
   for (let index = 1; index < cleanIntervals.length; index += 1) {
     const previous = cleanIntervals[index - 1];
@@ -370,19 +344,10 @@ export function estimatePpgVariability(
   ) * 100;
 
   return {
-    sdnnMs: Number.isFinite(standardDeviation) ? standardDeviation : null,
+    sdnnMs: Number.isFinite(variance) ? Math.sqrt(variance) : null,
     rmssdMs: Number.isFinite(rmssd) ? rmssd : null,
     pnn50Percent: Number.isFinite(pnn50) ? pnn50 : null,
     meanPpiMs: average,
-    modaMs: Number.isFinite(modaMs) ? modaMs : null,
-    amo50Percent: Number.isFinite(amo50Percent) ? amo50Percent : null,
-    mxDmnMs: Number.isFinite(mxDmnMs) ? mxDmnMs : null,
-    coefficientVariationPercent: Number.isFinite(coefficientVariationPercent)
-      ? coefficientVariationPercent
-      : null,
-    stressIndex: stressIndex !== null && Number.isFinite(stressIndex)
-      ? stressIndex
-      : null,
     validBeatCount: cleanIntervals.length,
     windowSeconds: window.durationSeconds,
   };

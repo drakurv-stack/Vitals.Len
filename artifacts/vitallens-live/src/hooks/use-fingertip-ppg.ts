@@ -182,11 +182,6 @@ export function useFingertipPpg() {
           hrvRmssd: { value: finalVariability.rmssdMs, confidence: null, unit: 'ms' },
           hrvPnn50: { value: finalVariability.pnn50Percent, confidence: null, unit: '%' },
           meanPulseInterval: { value: finalVariability.meanPpiMs, confidence: null, unit: 'ms' },
-          hrvModa: finalVariability.modaMs === null ? null : { value: finalVariability.modaMs, confidence: null, unit: 'ms' },
-          hrvAmo50: finalVariability.amo50Percent === null ? null : { value: finalVariability.amo50Percent, confidence: null, unit: '%' },
-          hrvMxDmn: finalVariability.mxDmnMs === null ? null : { value: finalVariability.mxDmnMs, confidence: null, unit: 'ms' },
-          hrvCv: finalVariability.coefficientVariationPercent === null ? null : { value: finalVariability.coefficientVariationPercent, confidence: null, unit: '%' },
-          hrvStressIndex: finalVariability.stressIndex === null ? null : { value: finalVariability.stressIndex, confidence: null, unit: 'index' },
         });
       }
       setReport(createMeasurementReport({
@@ -431,21 +426,6 @@ export function useFingertipPpg() {
               meanPulseInterval: variabilityEstimate.meanPpiMs === null
                 ? null
                 : { value: variabilityEstimate.meanPpiMs, confidence: null, unit: 'ms' },
-              hrvModa: variabilityEstimate.modaMs === null
-                ? null
-                : { value: variabilityEstimate.modaMs, confidence: null, unit: 'ms' },
-              hrvAmo50: variabilityEstimate.amo50Percent === null
-                ? null
-                : { value: variabilityEstimate.amo50Percent, confidence: null, unit: '%' },
-              hrvMxDmn: variabilityEstimate.mxDmnMs === null
-                ? null
-                : { value: variabilityEstimate.mxDmnMs, confidence: null, unit: 'ms' },
-              hrvCv: variabilityEstimate.coefficientVariationPercent === null
-                ? null
-                : { value: variabilityEstimate.coefficientVariationPercent, confidence: null, unit: '%' },
-              hrvStressIndex: variabilityEstimate.stressIndex === null
-                ? null
-                : { value: variabilityEstimate.stressIndex, confidence: null, unit: 'index' },
             });
           }
           lastReportReadingAtRef.current = elapsed;

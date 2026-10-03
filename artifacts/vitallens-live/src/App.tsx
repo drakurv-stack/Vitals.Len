@@ -6,18 +6,11 @@ import type { LiveInferenceUpdate } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FingertipPpgMode } from '@/components/fingertip-ppg-mode';
 import { MeasurementReport } from '@/components/measurement-report';
-import { BodyReport } from '@/components/body-report';
 import { StressCheck } from '@/components/stress-check';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { createMeasurementReport, type MeasurementReportReading } from '@/lib/measurement-report-data';
 import { MeasurementReportProvider, useMeasurementReport } from '@/lib/measurement-report-context';
-import {
-  getBodyReportHistory,
-  saveBodyReport,
-  toBodyReportHistoryMetrics,
-  type BodyReportHistoryRecord,
-} from '@/lib/body-report-api';
 import { useFingertipPpg } from '@/hooks/use-fingertip-ppg';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
@@ -129,7 +122,7 @@ function AppHome() {
     setInference(null);
     setPhase('idle');
     startedAtRef.current = 0;
-    setLocation('/session-report');
+    setLocation('/report');
   }, [setLocation, setReport, stopCamera, stopSession]);
 
   useEffect(() => {
@@ -423,7 +416,7 @@ function FingertipPpgPage() {
   useEffect(() => {
     if (!report) return;
     setReport(report);
-    setLocation('/session-report');
+    setLocation('/report');
   }, [report, setLocation, setReport]);
 
   return <FingertipPpgMode {...ppgProps} />;
@@ -456,95 +449,7 @@ function MeasurementReportPage() {
     );
   }
 
-  return (
-    <MeasurementReport
-      report={report}
-      onClose={continueToMeasurement}
-      onViewBodyReport={() => setLocation('/report')}
-    />
-  );
-}
-
-function BodyReportPage() {
-  const { report } = useMeasurementReport();
-  const [, setLocation] = useLocation();
-  const [history, setHistory] = useState<BodyReportHistoryRecord[]>([]);
-  const [profile, setProfile] = useState({ age: null as number | null, sex: null as string | null });
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setStatus('loading');
-      try {
-        const result = await getBodyReportHistory();
-        if (cancelled) return;
-        setHistory(result.items);
-        setProfile(result.profile);
-        if (report && !result.items.some((entry) =>
-          entry.source === report.source && entry.completedAt === report.completedAt,
-        )) {
-          const saved = await saveBodyReport({
-            source: report.source,
-            completedAt: report.completedAt,
-            profile: result.profile,
-            sessionReport: report,
-            manualMetrics: {},
-          });
-          if (cancelled) return;
-          setHistory((current) => [saved, ...current].slice(0, 50));
-          setProfile(saved.profile);
-        }
-        if (!cancelled) setStatus('ready');
-      } catch {
-        if (!cancelled) setStatus('error');
-      }
-    };
-    void load();
-    return () => { cancelled = true; };
-  }, [report]);
-
-  const saveManualEntry = useCallback(async (input: {
-    age: number | null;
-    sex: string | null;
-    metrics: Record<string, number>;
-  }) => {
-    const saved = await saveBodyReport({
-      source: 'manual',
-      completedAt: new Date().toISOString(),
-      profile: { age: input.age, sex: input.sex },
-      sessionReport: null,
-      manualMetrics: input.metrics,
-    });
-    setHistory((current) => [saved, ...current].slice(0, 50));
-    setProfile(saved.profile);
-    setStatus('ready');
-  }, []);
-
-  const continueToReport = useCallback(() => {
-    setLocation(report ? '/session-report' : '/');
-  }, [report, setLocation]);
-
-  const measureAgain = useCallback(() => {
-    setLocation(report?.source === 'fingertip' ? '/ppg' : '/');
-  }, [report, setLocation]);
-
-  return (
-    <BodyReport
-      report={report}
-      history={history.map((entry) => ({
-        id: entry.id,
-        source: entry.source,
-        completedAt: entry.completedAt,
-        metrics: toBodyReportHistoryMetrics(entry),
-      }))}
-      profile={profile}
-      status={status}
-      onContinue={continueToReport}
-      onMeasureAgain={measureAgain}
-      onManualSave={saveManualEntry}
-    />
-  );
+  return <MeasurementReport report={report} onClose={continueToMeasurement} />;
 }
 
 function Router() {
@@ -553,8 +458,7 @@ function Router() {
       <Switch>
         <Route path="/" component={AppHome} />
         <Route path="/ppg" component={FingertipPpgPage} />
-        <Route path="/session-report" component={MeasurementReportPage} />
-        <Route path="/report" component={BodyReportPage} />
+        <Route path="/report" component={MeasurementReportPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

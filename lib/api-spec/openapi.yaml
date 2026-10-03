@@ -12,8 +12,6 @@ tags:
     description: Health operations
   - name: live-demo
     description: Live camera demo operations
-  - name: body-report
-    description: Private body-report history and manually entered readings
 paths:
   /healthz:
     get:
@@ -120,60 +118,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /report:
-    post:
-      operationId: saveBodyReport
-      tags: [body-report]
-      summary: Save a measurement report to the current browser's private history
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateBodyReport"
-      responses:
-        "201":
-          description: Saved report
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BodyReportHistoryEntry"
-        "400":
-          description: Invalid report input
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: Request did not originate from this site
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "503":
-          description: Private report storage is not configured
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /report/history:
-    get:
-      operationId: getBodyReportHistory
-      tags: [body-report]
-      summary: Get private reports and the latest saved profile for this browser
-      responses:
-        "200":
-          description: Private report history
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BodyReportHistoryResponse"
-        "503":
-          description: Private report storage is not configured
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -191,75 +135,6 @@ components:
         message:
           type: string
       required: [apiReady, message]
-    BodyReportProfile:
-      type: object
-      properties:
-        age:
-          type: [integer, "null"]
-          minimum: 0
-          maximum: 120
-        sex:
-          type: [string, "null"]
-          enum: [female, male, intersex, prefer_not_to_say, null]
-      required: [age, sex]
-    BodyReportSession:
-      type: object
-      additionalProperties: true
-      description: Validated single-session report from the camera measurement flow.
-    CreateBodyReport:
-      type: object
-      properties:
-        source:
-          type: string
-          enum: [fingertip, vitallens, manual]
-        completedAt:
-          type: string
-          format: date-time
-        profile:
-          $ref: "#/components/schemas/BodyReportProfile"
-        sessionReport:
-          oneOf:
-            - $ref: "#/components/schemas/BodyReportSession"
-            - type: "null"
-        manualMetrics:
-          type: object
-          additionalProperties:
-            type: number
-            minimum: 0
-      required: [source, completedAt, profile, sessionReport, manualMetrics]
-    BodyReportHistoryEntry:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        source:
-          type: string
-          enum: [fingertip, vitallens, manual]
-        completedAt:
-          type: string
-          format: date-time
-        profile:
-          $ref: "#/components/schemas/BodyReportProfile"
-        sessionReport:
-          oneOf:
-            - $ref: "#/components/schemas/BodyReportSession"
-            - type: "null"
-        manualMetrics:
-          type: object
-          additionalProperties:
-            type: number
-      required: [id, source, completedAt, profile, sessionReport, manualMetrics]
-    BodyReportHistoryResponse:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/BodyReportHistoryEntry"
-        profile:
-          $ref: "#/components/schemas/BodyReportProfile"
-      required: [items, profile]
     LiveSession:
       type: object
       properties:

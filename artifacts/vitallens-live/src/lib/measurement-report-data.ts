@@ -9,12 +9,7 @@ export type MeasurementMetricKey =
   | 'hrvSdnn'
   | 'hrvRmssd'
   | 'hrvPnn50'
-  | 'meanPulseInterval'
-  | 'hrvModa'
-  | 'hrvAmo50'
-  | 'hrvMxDmn'
-  | 'hrvCv'
-  | 'hrvStressIndex';
+  | 'meanPulseInterval';
 
 export interface MeasurementMetricValue {
   value: number | null;
@@ -31,11 +26,6 @@ export interface MeasurementReportReading {
   hrvRmssd: MeasurementMetricValue | null;
   hrvPnn50?: MeasurementMetricValue | null;
   meanPulseInterval?: MeasurementMetricValue | null;
-  hrvModa?: MeasurementMetricValue | null;
-  hrvAmo50?: MeasurementMetricValue | null;
-  hrvMxDmn?: MeasurementMetricValue | null;
-  hrvCv?: MeasurementMetricValue | null;
-  hrvStressIndex?: MeasurementMetricValue | null;
 }
 
 interface CreateMeasurementReportOptions {
@@ -57,11 +47,6 @@ const METRIC_DETAILS: Record<
   hrvRmssd: { label: 'HRV · RMSSD', unit: 'ms' },
   hrvPnn50: { label: 'HRV · pNN50', unit: '%' },
   meanPulseInterval: { label: 'Mean pulse interval', unit: 'ms' },
-  hrvModa: { label: 'Moda', unit: 'ms' },
-  hrvAmo50: { label: 'AMo50', unit: '%' },
-  hrvMxDmn: { label: 'MxDMn', unit: 'ms' },
-  hrvCv: { label: 'CV', unit: '%' },
-  hrvStressIndex: { label: 'Stress Index · experimental', unit: 'index' },
 };
 
 function median(values: readonly number[]): number | null {
@@ -129,11 +114,6 @@ function createSummary(
     'hrvRmssd',
     'hrvPnn50',
     'meanPulseInterval',
-    'hrvModa',
-    'hrvAmo50',
-    'hrvMxDmn',
-    'hrvCv',
-    'hrvStressIndex',
   ] as const) {
     const metric = metrics.find((item) => item.key === key);
     if (metric?.value !== null && metric?.value !== undefined) {
@@ -168,18 +148,7 @@ export function createMeasurementReport({
 }: CreateMeasurementReportOptions): MeasurementReportData {
   const keys: MeasurementMetricKey[] =
     source === 'fingertip'
-      ? [
-          'heartRate',
-          'hrvSdnn',
-          'hrvRmssd',
-          'hrvPnn50',
-          'meanPulseInterval',
-          'hrvModa',
-          'hrvAmo50',
-          'hrvMxDmn',
-          'hrvCv',
-          'hrvStressIndex',
-        ]
+      ? ['heartRate', 'hrvSdnn', 'hrvRmssd', 'hrvPnn50', 'meanPulseInterval']
       : ['heartRate', 'respiratoryRate', 'hrvSdnn', 'hrvRmssd'];
 
   const metrics = keys
